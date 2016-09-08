@@ -52,35 +52,22 @@ def split(s):
     return parts
 
 
-def pattern_extract(text, patterns, validate, start_len=2, stop_len=7):
+class PatternExtractor(object):
     '''
-    Extract locations using regular expressions.
+    Extractor for regular expression matches.
 
-    ``text`` is a free-form text that may contain one or more locations.
-    Location candidates are extracted from ``text`` using ``patterns``,
-    which contains a list of *compiled* regular expression objects. Each
-    of these patterns should include several named groups. For each
-    match of a pattern in ``text``, the captured groups are extracted
-    into a dictionary which is then passed to ``validate``.
+    Many forms of addresses follow fixed patterns, which can be
+    expressed using regular expressions. This class provides an
+    extractor for pattern-based location candidates.
 
-    The idea is that the regular expressions express the expected forms
-    of locations (i.e. their syntax) while ``validate`` checks whether
-    they make sense (for example by comparing an extracted street name
-    with a list of known names).
-
-    ``pattern_extract`` yields a all matches for which ``validate``
-    returned a true value. Each match is returned as a tuple
-    ``(start, length, match)``, where ``start`` is the start index of
-    the match in ``text``, ``length`` is its length in characters and
-    ``match`` is the dict that was passed to ``validate``.
-
-    Since the names in locations can contain spaces care has to be taken
-    to avoid the regular expressions matching too many space-separated
-    words. For example, in the text ``"We meet at 7 Bay Road in the
-    morning"`` a space-accepting regular expression might end up
-    matching not only ``Bay Road`` but ``Bay Road in the`` or more. To
-    avoid this problem, the text is scanned multiple times in groups of
-    space-separated words of varying length::
+    Its main advantage is its support for scanning a text in overlapping
+    windows of a varying number of space-separated words. This solves a
+    problem caused by names (of roads, cities, ...) containing spaces:
+    For example, in the text ``"We meet at 7 Bay Road in the morning"``,
+    a space-accepting regular expression might end up matching not only
+    ``Bay Road`` but ``Bay Road in the`` or more. To avoid this problem,
+    the text is scanned multiple times in windows of space-separated
+    words of varying length::
 
         We meet               #
         meet at               #
@@ -102,22 +89,50 @@ def pattern_extract(text, patterns, validate, start_len=2, stop_len=7):
 
         ...
 
-    You can change the minimum and maximum group size via ``start_len``
-    (inclusive) and ``stop_len`` (exclusive).
-
-    See also ``NameExtractor`` for extracting fixed strings instead of
-    patterns.
+    You can change the minimum and maximum group size via the
+    constructor arguments ``start_len`` and ``stop_len``.
     '''
-    words = split(text)
-    for length in range(start_len, stop_len):
-        for start, window in enumerate(windowed(words, length)):
-            s = ' '.join(w[1] for w in window)
-            for pattern in patterns:
-                m = pattern.search(s)
-                if m:
-                    result = m.groupdict()
-                    if validate(result):
-                        yield ((window[0][0], len(s), result))
+    def __init__(self, patterns, start_len=2, stop_len=7):
+        '''
+        Constructor.
+
+        ``patterns`` is a list of *compiled* regular expression objects.
+        Each of these must include named groups. The names of the groups
+        are used by ``extract`` to build the result dict.
+
+        ``start_len`` and ``stop_len`` specify the minimum and maximimum
+        (both inclusive) number of space-separated words in the sliding
+        windows. Unless you're matching single words using your patterns
+        you shouldn't reduce ``start_len`` (a fast way of extracting
+        fixed strings is provided by ``NameExtractor``). The value of
+        ``stop_len`` should match the maximum number of space-separated
+        components that you expect in your locations. For example, if
+        you're looking for locations of the form ``<name> + <number>``
+        and ``name`` may contain up to 3 spaces then set ``stop_len=4``
+        to check windows with up to 4 words.
+        '''
+        self.patterns = patterns
+        self.start_len = start_len
+        self.stop_len = stop_len
+
+    def extract(self, text):
+        '''
+        Extract potential locations using regular expressions.
+
+        Yields all matches for the patterns (as given to the constructor) in
+        ``text``. Each match is reported as a 3-tuple ``(start, length,
+        match)``, where ``start`` is the start index of the match in
+        ``text``, ``length`` is its length in characters and ``match`` is a
+        dict that contains the values of the named groups of the pattern.
+        '''
+        words = split(text)
+        for length in range(self.start_len, self.stop_len + 1):
+            for start, window in enumerate(windowed(words, length)):
+                s = ' '.join(w[1] for w in window)
+                for pattern in self.patterns:
+                    m = pattern.search(s)
+                    if m:
+                        yield (window[0][0], len(s), m.groupdict())
 
 
 def filter_results(results):
