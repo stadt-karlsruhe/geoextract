@@ -52,89 +52,6 @@ def split(s):
     return parts
 
 
-class PatternExtractor(object):
-    '''
-    Extractor for regular expression matches.
-
-    Many forms of addresses follow fixed patterns, which can be
-    expressed using regular expressions. This class provides an
-    extractor for pattern-based location candidates.
-
-    Its main advantage is its support for scanning a text in overlapping
-    windows of a varying number of space-separated words. This solves a
-    problem caused by names (of roads, cities, ...) containing spaces:
-    For example, in the text ``"We meet at 7 Bay Road in the morning"``,
-    a space-accepting regular expression might end up matching not only
-    ``Bay Road`` but ``Bay Road in the`` or more. To avoid this problem,
-    the text is scanned multiple times in windows of space-separated
-    words of varying length::
-
-        We meet               #
-        meet at               #
-        ...                   # groups of 2 words
-        in the                #
-        the morning           #
-
-        We meet at            #
-        meet at 7             #
-        ...                   # groups of 3 words
-        Road in the           #
-        in the morning        #
-
-        We meet at 7          #
-        meet at 7 Bay         #
-        ...                   #  groups of 4 words
-        Bay Road in the       #
-        Road in the morning   #
-
-        ...
-
-    You can change the minimum and maximum group size via the
-    constructor arguments ``start_len`` and ``stop_len``.
-    '''
-    def __init__(self, patterns, start_len=2, stop_len=7):
-        '''
-        Constructor.
-
-        ``patterns`` is a list of *compiled* regular expression objects.
-        Each of these must include named groups. The names of the groups
-        are used by ``extract`` to build the result dict.
-
-        ``start_len`` and ``stop_len`` specify the minimum and maximimum
-        (both inclusive) number of space-separated words in the sliding
-        windows. Unless you're matching single words using your patterns
-        you shouldn't reduce ``start_len`` (a fast way of extracting
-        fixed strings is provided by ``NameExtractor``). The value of
-        ``stop_len`` should match the maximum number of space-separated
-        components that you expect in your locations. For example, if
-        you're looking for locations of the form ``<name> + <number>``
-        and ``name`` may contain up to 3 spaces then set ``stop_len=4``
-        to check windows with up to 4 words.
-        '''
-        self.patterns = patterns
-        self.start_len = start_len
-        self.stop_len = stop_len
-
-    def extract(self, text):
-        '''
-        Extract potential locations using regular expressions.
-
-        Yields all matches for the patterns (as given to the constructor) in
-        ``text``. Each match is reported as a 3-tuple ``(start, length,
-        match)``, where ``start`` is the start index of the match in
-        ``text``, ``length`` is its length in characters and ``match`` is a
-        dict that contains the values of the named groups of the pattern.
-        '''
-        words = split(text)
-        for length in range(self.start_len, self.stop_len + 1):
-            for start, window in enumerate(windowed(words, length)):
-                s = ' '.join(w[1] for w in window)
-                for pattern in self.patterns:
-                    m = pattern.search(s)
-                    if m:
-                        yield (window[0][0], len(s), m.groupdict())
-
-
 def filter_results(results):
     '''
     Prune overlapping results.
@@ -205,4 +122,177 @@ class NameExtractor(object):
             end_index = len(b[:end_index + 1].decode('utf-8'))
             length = len(name)
             yield (end_index - length + 1, length, {'name': name})
+
+
+class WindowExtractor(object):
+    '''
+    Base class for extractors based on sliding windows.
+
+    A common problem when extracting potential locations from a text is
+    that names of roads and cities often contain spaces. Faced with a
+    sequence of words, the extractor then has to decide how many of them
+    may belong to a name. This often leads to matches which contain too
+    many words. For example, in the text ``"We meet at 7 Bay Road in the
+    morning"``, we might end up matching not only ``Bay Road`` but ``Bay
+    Road in the`` or more. While such overly long matches can often be
+    quickly eliminated during validation they potentially prevent
+    shorter, correct matches from being registered at all.
+
+    To avoid this problem, subclasses of this class scan the text
+    multiple times using windows of a varying number of space-separated
+    words:
+
+        We meet               #
+        meet at               #
+        ...                   # groups of 2 words
+        in the                #
+        the morning           #
+
+        We meet at            #
+        meet at 7             #
+        ...                   # groups of 3 words
+        Road in the           #
+        in the morning        #
+
+        We meet at 7          #
+        meet at 7 Bay         #
+        ...                   #  groups of 4 words
+        Bay Road in the       #
+        Road in the morning   #
+
+        ...
+
+    This ensures that shorter combinations also have the chance of being
+    matched. Obviously this doesn't prevent the incorrect longer groups
+    of being matched, too. As mentioned before those need to be
+    eliminated in a second validation step.
+
+    You can change the minimum and maximum group size via the
+    constructor arguments ``start_len`` and ``stop_len``.
+    '''
+    def __init__(self, start_len, stop_len):
+        '''
+        Constructor.
+
+        ``start_len`` and ``stop_len`` specify the minimum and maximimum
+        (both inclusive) number of space-separated words in the sliding
+        windows. Unless you're matching single words using your patterns
+        you shouldn't reduce ``start_len`` (a fast way of extracting
+        fixed strings is provided by ``NameExtractor``). The value of
+        ``stop_len`` should match the maximum number of space-separated
+        components that you expect in your locations. For example, if
+        you're looking for locations of the form ``<name> + <number>``
+        and ``name`` may contain up to 3 spaces then set ``stop_len=4``
+        to check windows with up to 4 words.
+        '''
+        self.start_len = start_len
+        self.stop_len = stop_len
+
+    def extract(self, text):
+        '''
+        Extract location candidates from a text.
+
+        Yields tuples ``(start, length, match)`` where ``start`` is the
+        start index of the location in ``text``, ``length`` is the
+        length of the match in characters and ``match`` is a dict
+        describing the location.
+        '''
+        words = split(text)
+        for length in range(self.start_len, self.stop_len + 1):
+            for start, window in enumerate(windowed(words, length)):
+                s = ' '.join(w[1] for w in window)
+                for match in self._window_extract(s):
+                    yield (window[0][0], len(s), match)
+
+    def _window_extract(self, window):
+        '''
+        Yield all candidate dicts for a window.
+
+        Must be implemented by subclasses.
+        '''
+        raise NotImplementedError('Must be implemented by subclasses.')
+
+
+class PatternExtractor(WindowExtractor):
+    '''
+    Extractor for regular expression matches.
+
+    Many forms of addresses follow fixed patterns, which can be
+    expressed using regular expressions. This class provides an
+    extractor for pattern-based location candidates.
+
+    This extractor uses sliding windows of varying sizes, see
+    ``WindowExtractor``.
+    '''
+    def __init__(self, patterns, start_len=2, stop_len=7):
+        '''
+        Constructor.
+
+        ``patterns`` is a list of *compiled* regular expression objects.
+        Each of these must include named groups. The names of the groups
+        are used by ``extract`` to build the result dict.
+
+        If you're also using the ``PostalExtractor`` then it is a good
+        idea to re-use libpostal's field names for your regular
+        expression group names. That way, your validation code will work
+        for results from both extractors.
+
+        See ``WindowExtractor`` for the meaning of ``start_len`` and
+        ``stop_len``.
+        '''
+        super(PatternExtractor, self).__init__(start_len, stop_len)
+        self.patterns = patterns
+
+    def _window_extract(self, window):
+        '''
+        Extract potential locations using regular expressions.
+
+        Yields all matches for the patterns (as given to the constructor) in
+        ``text``. Each match is reported as a 3-tuple ``(start, length,
+        match)``, where ``start`` is the start index of the match in
+        ``text``, ``length`` is its length in characters and ``match`` is a
+        dict that contains the values of the named groups of the pattern.
+        '''
+        for pattern in self.patterns:
+            m = pattern.search(window)
+            if m:
+                yield m.groupdict()
+
+
+class PostalExtractor(WindowExtractor):
+    '''
+    Extractor for potential locations using *libpostal*.
+
+    libpostal_ is a statistical address parser that supports many
+    languages. This extractor passes a text in slices of varying length
+    to *libpostal*.
+
+    While this extractor is very versatile it also generates huge
+    amounts of false positives -- because there are so many different
+    address formats, *libpostal* will recognize a potential address in
+    almost anything. Careful validation of the results is therefore
+    especially important.
+
+    This extractor uses sliding windows of varying sizes, see
+    ``WindowExtractor``.
+
+    .. _libpostal: https://github.com/openvenues/libpostal
+    '''
+    def __init__(self, start_len=2, stop_len=7):
+        '''
+        Constructor.
+
+        See the documentation of ``WindowExtractor`` for the meaning
+        of ``start_len`` and ``stop_len``.
+
+        Note: The constructor imports the ``postal.parser`` package
+        (unless that has happened before), which takes quite some time.
+        '''
+        super(PostalExtractor, self).__init__(start_len, stop_len)
+        import postal.parser  # Lazy import because it takes long
+        self._parse_address = postal.parser.parse_address
+
+    def _window_extract(self, window):
+        yield dict((key, value) for (value, key)
+                   in self._parse_address(window))
 
