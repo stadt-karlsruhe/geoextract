@@ -13,8 +13,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import itertools
-
-from postal.parser import parse_address
+import re
 
 
 # From the (old) itertools docs, see
@@ -32,66 +31,114 @@ def windowed(seq, n=2):
         yield result
 
 
-def sublist_index(big, small, start=0):
+def split(s):
     '''
-    Find a small list in a big list.
+    Split a string at whitespace.
+
+    Works like ``str.split`` but returns a list of tuples `(pos, part)`
+    where `part` is the sub-string and `pos` its index in the original
+    string.
     '''
-    while True:
-        start = big.index(small[0], start, len(big) - len(small) + 1)
-        if big[start:start + len(small)] == small:
-            return start
-        start += 1
+    parts = []
+    pos = None
+    for m in re.finditer(r'\s+', s):
+        if pos is not None:
+            parts.append((pos, s[pos:m.start()]))
+        pos = m.end()
+    if pos < len(s):
+        parts.append((pos, s[pos:]))
+    return parts
 
 
-def sublist_indices(big, small, start=0, overlapping=True):
+def pattern_extract(text, patterns, validate, start_len=2, stop_len=7):
     '''
-    Find all occurrences of a small list in a big list.
+    Extract locations using regular expressions.
+
+    ``text`` is a free-form text that may contain one or more locations.
+    Location candidates are extracted from ``text`` using ``patterns``,
+    which contains a list of *compiled* regular expression objects. Each
+    of these patterns should include several named groups. For each
+    match of a pattern in ``text``, the captured groups are extracted
+    into a dictionary which is then passed to ``validate``.
+
+    The idea is that the regular expressions express the expected forms
+    of locations (i.e. their syntax) while ``validate`` checks whether
+    they make sense (for example by comparing an extracted street name
+    with a list of known names).
+
+    ``pattern_extract`` returns a list with all matches for which
+    ``validate`` returned a true value. Each match is returned as a
+    tuple ``(start, length, match)``, where ``start`` is the start index
+    of the match in ``text``, ``length`` is its length in characters and
+    ``match`` is the dict that was passed to ``validate``.
+
+    Since the names in locations can contain spaces care has to be taken
+    to avoid the regular expressions matching too many space-separated
+    words. For example, in the text ``"We meet at 7 Bay Road in the
+    morning"`` a space-accepting regular expression might end up
+    matching not only ``Bay Road`` but ``Bay Road in the`` or more. To
+    avoid this problem, the text is scanned multiple times in groups of
+    space-separated words of varying length::
+
+        We meet               #
+        meet at               #
+        ...                   # groups of 2 words
+        in the                #
+        the morning           #
+
+        We meet at            #
+        meet at 7             #
+        ...                   # groups of 3 words
+        Road in the           #
+        in the morning        #
+
+        We meet at 7          #
+        meet at 7 Bay         #
+        ...                   #  groups of 4 words
+        Bay Road in the       #
+        Road in the morning   #
+
+        ...
+
+    You can change the minimum and maximum group size via ``start_len``
+    (inclusive) and ``stop_len`` (exclusive).
     '''
-    while True:
-        try:
-            start = sublist_index(big, small, start)
-        except ValueError:
-            break
-        yield start
-        if overlapping:
-            start += 1
-        else:
-            start += len(small)
-
-
-def extract(text, validate, names=None, start_len=2, stop_len=6):
     results = []
-    words = text.split()
-
-    # Address extraction via libpostal
+    words = split(text)
     for length in range(start_len, stop_len):
         for start, window in enumerate(windowed(words, length)):
-            result = parse_address(' '.join(window))
-            result = dict((key, value) for (value, key) in result)
-            if not validate(result):
-                continue
-            results.append((start, length, result))
+            s = ' '.join(w[1] for w in window)
+            for pattern in patterns:
+                m = pattern.search(s)
+                if m:
+                    result = m.groupdict()
+                    if validate(result):
+                        results.append((window[0][0], len(s), result))
+    return results
 
-    # Name extraction
-    for name in (names or []):
-        name_words = name.split()
-        for index in sublist_indices(words, name_words):
-            results.append((index, len(name_words), {'name': name}))
 
-    # Remove incomplete matches. The idea is that if a match is contained
-    # within another match then it is dropped. That way, for each location
-    # in the text, only the longest (and hopefully most complete) match
-    # is kept.
-    if results:
-        # Sort increasingly by start and decreasingly by length
-        results = sorted(results, key=lambda x: (x[0], -x[1]))
-        keep = [results[0]]
-        for result in results[1:]:
-            if (result[0] + result[1]) > (keep[-1][0] + keep[-1][1]):
-                keep.append(result)
-        results = keep
+def filter_results(results):
+    '''
+    Prune overlapping results.
 
-    # Remove duplicates
-    return [dict(s) for s in set(frozenset(r[2].items()) for r in results)]
+    If the text region of a result is covered by another result then the
+    smaller result is dropped. That way, for each location in the text
+    only the longest (and hopefully most complete) result is kept.
+    '''
+    if not results:
+        return []
+    # Sort increasingly by start and decreasingly by length
+    results = sorted(results, key=lambda x: (x[0], -x[1]))
+    keep = [results[0]]
+    for result in results[1:]:
+        if (result[0] + result[1]) > (keep[-1][0] + keep[-1][1]):
+            keep.append(result)
+    return keep
 
+
+def unique_dicts(dicts):
+    '''
+    Remove duplicates from a list of dicts.
+    '''
+    return [dict(s) for s in set(frozenset(d.items()) for d in dicts)]
 
