@@ -15,6 +15,8 @@ from __future__ import (absolute_import, division, print_function,
 import itertools
 import re
 
+import ahocorasick
+
 
 # From the (old) itertools docs, see
 # http://stackoverflow.com/a/6822773/857390
@@ -66,10 +68,10 @@ def pattern_extract(text, patterns, validate, start_len=2, stop_len=7):
     they make sense (for example by comparing an extracted street name
     with a list of known names).
 
-    ``pattern_extract`` returns a list with all matches for which
-    ``validate`` returned a true value. Each match is returned as a
-    tuple ``(start, length, match)``, where ``start`` is the start index
-    of the match in ``text``, ``length`` is its length in characters and
+    ``pattern_extract`` yields a all matches for which ``validate``
+    returned a true value. Each match is returned as a tuple
+    ``(start, length, match)``, where ``start`` is the start index of
+    the match in ``text``, ``length`` is its length in characters and
     ``match`` is the dict that was passed to ``validate``.
 
     Since the names in locations can contain spaces care has to be taken
@@ -102,8 +104,10 @@ def pattern_extract(text, patterns, validate, start_len=2, stop_len=7):
 
     You can change the minimum and maximum group size via ``start_len``
     (inclusive) and ``stop_len`` (exclusive).
+
+    See also ``NameExtractor`` for extracting fixed strings instead of
+    patterns.
     '''
-    results = []
     words = split(text)
     for length in range(start_len, stop_len):
         for start, window in enumerate(windowed(words, length)):
@@ -113,8 +117,7 @@ def pattern_extract(text, patterns, validate, start_len=2, stop_len=7):
                 if m:
                     result = m.groupdict()
                     if validate(result):
-                        results.append((window[0][0], len(s), result))
-    return results
+                        yield ((window[0][0], len(s), result))
 
 
 def filter_results(results):
@@ -141,4 +144,50 @@ def unique_dicts(dicts):
     Remove duplicates from a list of dicts.
     '''
     return [dict(s) for s in set(frozenset(d.items()) for d in dicts)]
+
+
+class NameExtractor(object):
+    '''
+    Fast extractor for fixed strings.
+
+    During geo-extraction one often wants to find all occurrences of a
+    large list of strings in a given text (e.g. the names of points of
+    interest). However, doing this naively takes very long. This class
+    provides a fast alternative using Aho-Corasick automata.
+
+    It is intended to be used in combination with ``pattern_extract``.
+    '''
+    def __init__(self, names):
+        '''
+        Constructor.
+
+        ``names`` is a list of names.
+        '''
+        # Build an Aho-Corasick automaton for fast name search.
+        # Unfortunately, the `ahocorasick` module currently doesn't
+        # support Unicode on Python 2, so we have to do some manual
+        # encoding/decoding. We also add a space at the start and end to
+        # avoid finding parts of words. That of course assumes that other
+        # word delimiters have been converted to spaces during
+        # normalization.
+        self._automaton = ahocorasick.Automaton()
+        for name in names:
+            b = (' ' + name + ' ').encode('utf-8')
+            self._automaton.add_word(b, name)
+        self._automaton.make_automaton()
+
+    def extract(self, text):
+        '''
+        Extract names from a text.
+
+        Yields tuples ``(start, length, match)`` where ``start`` is the
+        start index of the name in ``text``, ``length`` is the length of
+        the name and ``match`` is ``{'name': name}``.
+        '''
+        b = text.encode('utf-8')
+        for end_index, name in self._automaton.iter(b):
+            end_index -= 2  # Because of space-padding
+            end_index = len(b[:end_index + 1].decode('utf-8'))
+            length = len(name)
+            yield (end_index - length + 1, length, {'name': name})
 
