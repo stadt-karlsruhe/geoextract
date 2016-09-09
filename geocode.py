@@ -4,6 +4,8 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import io
+
 
 class AddressLocator(object):
 
@@ -18,5 +20,14 @@ class AddressLocator(object):
                 WHERE `strasse`=%s AND `hausnr`=%s
                 '''
             cursor.execute(sql, (road, number))
-            return cursor.fetchone()
+            result = cursor.fetchone()
+            if not result:
+                return
+            lat, lon = result
+            if lat == 0 and lon == 0:
+                return None
+            if lat < lon:
+                # One some entries, the coordinates are mixed up
+                lat, lon = lon, lat
+            return lat, lon
 
