@@ -1,5 +1,8 @@
 /venv/
 /*test*/
 
+/docs.json
+/db.json
+
 .*.swp
 *.pyc
