@@ -87,7 +87,8 @@ class NameExtractor(object):
     interest). However, doing this naively takes very long. This class
     provides a fast alternative using Aho-Corasick automata.
 
-    It is intended to be used in combination with ``pattern_extract``.
+    To avoid finding matches inside words only words surrounded by
+    spaces (or at the beginning and end of the text) are matched.
     '''
     def __init__(self, names):
         '''
@@ -104,6 +105,7 @@ class NameExtractor(object):
         # normalization.
         self._automaton = ahocorasick.Automaton()
         for name in names:
+            name = name.strip()
             b = (' ' + name + ' ').encode('utf-8')
             self._automaton.add_word(b, name)
         self._automaton.make_automaton()
@@ -116,11 +118,12 @@ class NameExtractor(object):
         start index of the name in ``text``, ``length`` is the length of
         the name and ``match`` is ``{'name': name}``.
         '''
-        b = text.encode('utf-8')
+        # Pad with spaces and encode, see __init__
+        b = (' ' + text + ' ').encode('utf-8')
         for end_index, name in self._automaton.iter(b):
-            end_index -= 2  # Because of space-padding
-            end_index = len(b[:end_index + 1].decode('utf-8'))
-            length = len(name)
+            end_index -= 1  # Because of space-padding of key
+            end_index = len(b[1:end_index + 1].decode('utf-8')) - 1
+            length = len(name)  # ``name`` is the original Unicode name
             yield (end_index - length + 1, length, {'name': name})
 
 
