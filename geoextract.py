@@ -20,7 +20,7 @@ import ahocorasick
 
 # From the (old) itertools docs, see
 # http://stackoverflow.com/a/6822773/857390
-def windowed(seq, n=2):
+def _windowed(seq, n=2):
     '''
     Sliding window over an iterable.
     '''
@@ -33,7 +33,7 @@ def windowed(seq, n=2):
         yield result
 
 
-def split(s):
+def _split(s):
     '''
     Split a string at whitespace.
 
@@ -52,13 +52,13 @@ def split(s):
     return parts
 
 
-def filter_results(results):
+def reduce_locations(results):
     '''
-    Prune overlapping results.
+    Prune overlapping locations.
 
-    If the text region of a result is covered by another result then the
-    smaller result is dropped. That way, for each location in the text
-    only the longest (and hopefully most complete) result is kept.
+    If the text region of a location is covered by another result then
+    the smaller one is dropped. That way, for each location in the text
+    only the longest (and hopefully most complete) variant is kept.
     '''
     if not results:
         return []
@@ -78,7 +78,29 @@ def unique_dicts(dicts):
     return [dict(s) for s in set(frozenset(d.items()) for d in dicts)]
 
 
-class NameExtractor(object):
+class Extractor(object):
+    '''
+    Base class for extractors.
+    '''
+    def extract(self, text):
+        '''
+        Extract potential locations from a text.
+
+        ``text`` is the plain text to extract locations from.
+
+        Yields tuples ``(start, length, data)`` where ``start`` is the
+        start index of the location in ``text``, ``length`` is the
+        length of the match and ``data`` is a dict with information
+        about the location.
+
+        This method is implemented by the various subclasses, which look
+        for different types of locations and hence return different
+        values in ``data``.
+        '''
+        raise NotImplementedError('Must be implemented in subclasses.')
+
+
+class NameExtractor(Extractor):
     '''
     Fast extractor for fixed strings.
 
@@ -111,13 +133,6 @@ class NameExtractor(object):
         self._automaton.make_automaton()
 
     def extract(self, text):
-        '''
-        Extract names from a text.
-
-        Yields tuples ``(start, length, match)`` where ``start`` is the
-        start index of the name in ``text``, ``length`` is the length of
-        the name and ``match`` is ``{'name': name}``.
-        '''
         # Pad with spaces and encode, see __init__
         b = (' ' + text + ' ').encode('utf-8')
         for end_index, name in self._automaton.iter(b):
@@ -127,7 +142,7 @@ class NameExtractor(object):
             yield (end_index - length + 1, length, {'name': name})
 
 
-class WindowExtractor(object):
+class WindowExtractor(Extractor):
     '''
     Base class for extractors based on sliding windows.
 
@@ -192,17 +207,9 @@ class WindowExtractor(object):
         self.stop_len = stop_len
 
     def extract(self, text):
-        '''
-        Extract location candidates from a text.
-
-        Yields tuples ``(start, length, match)`` where ``start`` is the
-        start index of the location in ``text``, ``length`` is the
-        length of the match in characters and ``match`` is a dict
-        describing the location.
-        '''
-        words = split(text)
+        words = _split(text)
         for length in range(self.start_len, self.stop_len + 1):
-            for start, window in enumerate(windowed(words, length)):
+            for start, window in enumerate(_windowed(words, length)):
                 s = ' '.join(w[1] for w in window)
                 for match in self._window_extract(s):
                     yield (window[0][0], len(s), match)
