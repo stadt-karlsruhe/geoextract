@@ -1,8 +1,8 @@
 /venv/
-/*test*/
+/dist/
+/build/
 
-/docs.json
-/db.json
+*.egg-info/
 
 .*.swp
 *.pyc
