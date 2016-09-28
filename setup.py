@@ -22,17 +22,18 @@
 # SOFTWARE.
 
 from setuptools import setup, find_packages
-import codecs
+import io
 import os.path
 import re
 
 
 HERE = os.path.abspath(os.path.dirname(__file__))
+INIT_PY = os.path.join(HERE, 'geoextract', '__init__.py')
+REQUIREMENTS_TXT = os.path.join(HERE, 'requirements.txt')
 
 # Extract version
-INIT_PY = os.path.join(HERE, 'geoextract', '__init__.py')
 version = None
-with codecs.open(INIT_PY) as f:
+with io.open(INIT_PY) as f:
     for line in f:
         m = re.match(r'__version__\s*=\s*[\'"](.*)[\'"]', line)
         if m:
@@ -40,6 +41,9 @@ with codecs.open(INIT_PY) as f:
             break
 if version is None:
     raise RuntimeError('Could not extract version from "{}".'.format(INIT_PY))
+
+with io.open(REQUIREMENTS_TXT, encoding='utf8') as f:
+    requirements = f.readlines()
 
 
 setup(
@@ -61,5 +65,6 @@ setup(
 
     keywords='''location address extraction'''.split(),
     packages=find_packages(),
+    install_requires=requirements,
 )
 
