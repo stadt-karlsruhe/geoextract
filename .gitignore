@@ -1,6 +1,7 @@
 /venv/
 /dist/
 /build/
+/README.html
 
 *.egg-info/
 

@@ -62,7 +62,51 @@ looks like this:
    same document are removed.
 
 
+## Installation
+
+*GeoExtract* relies on [NumPy][numpy] and [SciPy][scipy], which are cumbersome
+to install from source. We therefore suggest to use your system's package
+manager to install them via pre-built packages. For example, on Ubuntu you
+would use
+
+    sudo apt-get install python-numpy python-scipy
+
+We also recommend to use a [virtualenv][virtualenv] for installing
+*GeoExtract*. Make sure to pass the `--system-site-packages` parameter so that
+the virtualenv picks up the system-wide installations of NumPy and SciPy:
+
+    virtualenv -p python2 --system-site-packages my_virtualenv
+    source my_virtualenv/bin/activate
+
+Installing *GeoExtract* is then easy using [pip][pip]:
+
+    pip install git+https://github.com/stadt-karlsruhe/geoextract.git
+
+
+[numpy]: http://www.numpy.org/
+[scipy]: https://www.scipy.org/
+[virtualenv]: https://virtualenv.pypa.io
+[pip]: https://pip.pypa.io
+
+
 ## API
+
+### Preprocessing
+
+Since the input for *GeoExtract* is text without any explicit structure (in
+contrast to, say, HTML), it is very important to extract as much *implicit*
+structure from it as possible. In our experience, whitespace can be used to
+separate a document into separate, semantically distinct chunks.
+
+`geoextract.preprocessing.split_components` does exactly that: It treats a text
+as a 2D-image and splits it into multiple components separated by whitespace.
+
+When extracting a document's text from a non-text file format (e.g. PDF) make
+sure to keep as much of the layout as possible if you want to use
+`split_components`. We've made good experiences with `pdftotext -layout`.
+
+
+### Extraction
 
 The main classes of *GeoExtract* are the subclasses of `Extractor`, which
 implement different strategies for finding candidate locations:
@@ -79,14 +123,41 @@ implement different strategies for finding candidate locations:
   [pypostal][pypostal] to be installed.
 
 Typically you will combine multiple extractors. Their `extract` method yields
-candidate locations, which you need to validate. Once you have a set of
-validated locations you can use `geoextract.reduce_locations` to prune
-incomplete and overlapping variants of the same location. Finally, use
-`geoextract.unique_dicts` to remove duplicate discoveries of the same location
-in a single document.
+candidate locations, which you need to validate.
+
+
+### Postprocessing
+
+Once you have a set of validated locations you can use
+`geoextract.reduce_locations` to prune incomplete and overlapping variants of
+the same location. Finally, use `geoextract.unique_dicts` to remove duplicate
+discoveries of the same location in a single document.
+
 
 [libpostal]: https://github.com/openvenues/libpostal
 [pypostal]: https://github.com/openvenues/pypostal
+
+
+## Development
+
+First clone the repository:
+
+    git clone https://github.com/stadt-karlsruhe/geoextract.git
+    cd geoextract
+
+Make sure you have [NumPy][numpy] and [SciPy][scipy] installed. For example,
+on Ubuntu:
+
+    sudo apt-get install python-numpy python-scipy
+
+Create a virtualenv:
+
+    virtualenv -p python2 --system-site-packages venv
+    source venv/bin/activate
+
+Install *GeoExtract* in development mode:
+
+    python setup.py develop
 
 
 ## License
