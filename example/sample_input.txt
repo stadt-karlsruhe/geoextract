@@ -1,0 +1,30 @@
+This is some sample input for the GeoExtract example.
+
+The easiest locations are those that are referred to by their name, for example
+the Konzerthaus or the Rathaus.
+
+Also common are addresses. These may be fully specified, e.g. Karlstr. 7, 76133
+Karlsruhe (note that this one spans multiple lines) or they may only consist of
+a street and a house number, such as Kaiserstrasse 3. Finally, people may simply
+be talking about a certain street, e.g. the Rüppurrer Straße. And then there
+are some more complex variants, for example house number ranges like Festplatz
+3-19 and funky house number such as Festplatz 11c. As you have seen we also
+have to account for a lot of spelling variants and abbreviations for "Straße".
+
+However, not everything that looks like an address also is one. Often, street
+names are followed by numbers that are not really house numbers, for example
+when listing how much it will cost to repair those streets:
+
+    STREET                COSTS
+    Festplatz              1000
+    Karl-Friedrich-Straße   943
+
+One also has to take the layout of the text into consideration. Typically,
+software processes text in a line-by-line fashion, but that doesn't always
+correspond to the true layout of the text. For example, here is a small
+table where a pure line-by-line technique won't work:
+
+    Person A                        Person B
+    Rüppurer Straße 12              Kaiserstraße 8
+    76137 Karlsruhe                 76133 Karlsruhe
+

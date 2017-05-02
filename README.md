@@ -138,6 +138,22 @@ discoveries of the same location in a single document.
 [pypostal]: https://github.com/openvenues/pypostal
 
 
+## Example
+
+An example pipeline using GeoExtract can be found in the `example` directory.
+
+Make sure to install the additional requirements for the example:
+
+    source my_virtualenv/bin/activate
+    pip install -r example/requirements.txt
+
+The example script takes a text file and extracts the locations. Due to the
+built-in validation this only works for locations that the script knows about,
+therefore a sample input file is also included:
+
+    python example/geoextract_example.py example/sample_input.txt
+
+
 ## Development
 
 First clone the repository:
