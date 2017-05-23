@@ -207,10 +207,10 @@ _pattern_extractor = _init_pattern_extractor()
 # step by comparing them to reference data (e.g. a list of all valid addresses)
 # and/or heuristics.
 
-def _validate_address(result):
+def _validate(result):
     if ('road' not in result) or ('house_number' not in result):
-        # Discard addresses without road or house number
-        return
+        # No need for validation
+        return True
     try:
         loc = _normalized_names[result['road']]
     except KeyError:
@@ -231,6 +231,11 @@ def _validate_address(result):
 # LOCATION EXTRACTION
 #
 
+pipeline = geoextract.Pipeline(
+    extractors=[_pattern_extractor, _name_extractor],
+    validators=[_validate],
+)
+
 # Now it's time to put all pieces together and extract a list of locations from
 # a text.
 
@@ -247,19 +252,7 @@ def extract_locations(text):
 
     for _, component in components:
         component = normalize_string(component)
-
-        # Extract and validate locations using patterns
-        pattern_results = list(_pattern_extractor.extract(component))
-        pattern_results = [r for r in pattern_results
-                           if _validate_address(r[2])]
-
-        # Extract locations using fixed names. There's no need for validation
-        # here, since we only extract perfect matches of known names in the
-        # first place.
-        name_results = list(_name_extractor.extract(component))
-
-        # Remove multiple matches of the same location
-        results.extend(geoextract.reduce_locations(pattern_results + name_results))
+        results.extend(pipeline.extract(component))
 
     locations = [_fix_location(r[2]) for r in results]
     return geoextract.unique_dicts(locations)

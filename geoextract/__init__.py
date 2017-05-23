@@ -75,24 +75,6 @@ def _split(s):
     return parts
 
 
-def reduce_locations(results):
-    '''
-    Prune overlapping locations.
-
-    If the text region of a location is covered by another result then
-    the smaller one is dropped. That way, for each location in the text
-    only the longest (and hopefully most complete) variant is kept.
-    '''
-    if not results:
-        return []
-    # Sort increasingly by start and decreasingly by length
-    results = sorted(results, key=lambda x: (x[0], -x[1]))
-    keep = [results[0]]
-    for result in results[1:]:
-        if (result[0] + result[1]) > (keep[-1][0] + keep[-1][1]):
-            keep.append(result)
-    return keep
-
 
 def unique_dicts(dicts):
     '''
@@ -328,4 +310,54 @@ class PostalExtractor(WindowExtractor):
     def _window_extract(self, window):
         yield dict((key, value) for (value, key)
                    in self._parse_address(window))
+
+
+class Pipeline(object):
+    '''
+    A geoextraction pipeline.
+    '''
+    def __init__(self, extractors=None, validators=None):
+        self.extractors = extractors or []
+        self.validators = validators or []
+
+    def extract(self, document):
+        candidates = []
+        for extractor in self.extractors:
+            candidates.extend(extractor.extract(document))
+        return self._prune_overlapping(self._validate(candidates))
+
+    def _validate(self, candidates):
+        '''
+        Validate a list of candidate locations.
+
+        Returns a list of all candidates that were approved by all
+        validators.
+        '''
+        validated = []
+        for candidate in candidates:
+            for validator in self.validators:
+                if not validator(candidate[2]):
+                    break
+            else:
+                validated.append(candidate)
+        return validated
+
+    @staticmethod
+    def _prune_overlapping(results):
+        '''
+        Prune overlapping locations.
+
+        If the text region of a location is covered by another result then
+        the smaller one is dropped. That way, for each location in the text
+        only the longest (and hopefully most complete) variant is kept.
+        '''
+        if not results:
+            return []
+        # Sort increasingly by start and decreasingly by length
+        results = sorted(results, key=lambda x: (x[0], -x[1]))
+        keep = [results[0]]
+        for result in results[1:]:
+            if (result[0] + result[1]) > (keep[-1][0] + keep[-1][1]):
+                keep.append(result)
+        return keep
 
