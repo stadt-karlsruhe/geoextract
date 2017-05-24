@@ -117,12 +117,13 @@ class NameExtractor(Extractor):
     To avoid finding matches inside words only words surrounded by
     spaces (or at the beginning and end of the text) are matched.
     '''
-    def __init__(self, names):
+    def __init__(self):
         '''
         Constructor.
-
-        ``names`` is a list of names.
         '''
+        self._automaton = None  # Initialized by ``setup``
+
+    def setup(self, pipeline):
         # Build an Aho-Corasick automaton for fast name search.
         # Unfortunately, the `ahocorasick` module currently doesn't
         # support Unicode on Python 2, so we have to do some manual
@@ -131,7 +132,7 @@ class NameExtractor(Extractor):
         # word delimiters have been converted to spaces during
         # normalization.
         self._automaton = ahocorasick.Automaton()
-        for name in names:
+        for name in pipeline.normalized_names:
             name = name.strip()
             b = (' ' + name + ' ').encode('utf-8')
             self._automaton.add_word(b, name)
@@ -152,7 +153,7 @@ class WindowExtractor(Extractor):
     Base class for extractors based on sliding windows.
 
     A common problem when extracting potential locations from a text is
-    that names of roads and cities often contain spaces. Faced with a
+    that names of streets and cities often contain spaces. Faced with a
     sequence of words, the extractor then has to decide how many of them
     may belong to a name. This often leads to matches which contain too
     many words. For example, in the text ``"We meet at 7 Bay Road in the
@@ -316,15 +317,57 @@ class Pipeline(object):
     '''
     A geoextraction pipeline.
     '''
-    def __init__(self, extractors=None, validators=None):
+    def __init__(self, locations, extractors=None, validators=None,
+                 normalizers=None):
+        self.locations = {loc['name'] : loc for loc in locations}
         self.extractors = extractors or []
         self.validators = validators or []
+        self.normalizers = normalizers or []
+        self._normalize_locations()
+        self._setup_components()
+
+    def _setup_components(self):
+        for component in itertools.chain(self.extractors, self.validators,
+                                         self.normalizers):
+            setup = getattr(component, 'setup', None)
+            if setup:
+                setup(self)
+
+    def _normalize_locations(self):
+        '''
+        Create a map with normalized location names.
+        '''
+        self.normalized_names = {}
+        for location in self.locations.itervalues():
+            self.normalized_names[self._normalize(location['name'])] = location
+            for alias in location.get('alias', []):
+                self.normalized_names[self._normalize(alias)] = location
+
+    def _augment_result(self, result):
+        '''
+        Augment a result with information from the location database.
+        '''
+        # Denormalize names
+        for key in ['name', 'street', 'city']:
+            try:
+                result[key] = self.normalized_names[result[key]]['name']
+            except KeyError:
+                pass
+        # Augment
+        try:
+            result.update(self.locations[result['name']])
+        except KeyError:
+            pass
 
     def extract(self, document):
         candidates = []
+        normalized = self._normalize(document)
         for extractor in self.extractors:
-            candidates.extend(extractor.extract(document))
-        return self._prune_overlapping(self._validate(candidates))
+            candidates.extend(extractor.extract(normalized))
+        for candidate in candidates:
+            self._augment_result(candidate[2])
+        results = self._prune_overlapping(self._validate(candidates))
+        return [result[2] for result in results]
 
     def _validate(self, candidates):
         '''
@@ -336,11 +379,19 @@ class Pipeline(object):
         validated = []
         for candidate in candidates:
             for validator in self.validators:
-                if not validator(candidate[2]):
+                if not validator.validate(candidate[2]):
                     break
             else:
                 validated.append(candidate)
         return validated
+
+    def _normalize(self, s):
+        '''
+        Run a string through all normalizers.
+        '''
+        for normalizer in self.normalizers:
+            s = normalizer.normalize(s)
+        return s
 
     @staticmethod
     def _prune_overlapping(results):

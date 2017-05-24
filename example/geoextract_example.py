@@ -32,50 +32,53 @@ RE_FLAGS = re.UNICODE
 _stemmer = GermanStemmer()
 
 
-def normalize_string(s):
-    '''
-    Normalize a string.
-    '''
-    s = s.strip().lower()
+class Normalizer(object):
 
-    # Replace Unicode by the closest ASCII-equivalent. Aside from
-    # Umlauts and Scharf-S, documents also often contain quotation
-    # marks from Microsoft Word and other funny stuff that makes our
-    # lives unnecesarily hard.
-    s = unidecode(s)
+    @staticmethod
+    def normalize(s):
+        '''
+        Normalize a string.
+        '''
+        s = s.strip().lower()
 
-    # Re-join lines broken using a hyphen
-    s = re.sub(r'([^\W\d_]-)\s*\n\s*', r'\1', s, flags=RE_FLAGS)
+        # Replace Unicode by the closest ASCII-equivalent. Aside from
+        # Umlauts and Scharf-S, documents also often contain quotation
+        # marks from Microsoft Word and other funny stuff that makes our
+        # lives unnecesarily hard.
+        s = unidecode(s)
 
-    # Re-join number ranges broken by a newline
-    s = re.sub(r'(\d-)\s*\n\s*(?=\d)', r'\1', s, flags=RE_FLAGS)
+        # Re-join lines broken using a hyphen
+        s = re.sub(r'([^\W\d_]-)\s*\n\s*', r'\1', s, flags=RE_FLAGS)
 
-    # Remove hyphens within words
-    s = re.sub(r'([^\W\d_])-+(?=[^\W\d_])', r'\1', s, flags=RE_FLAGS)
+        # Re-join number ranges broken by a newline
+        s = re.sub(r'(\d-)\s*\n\s*(?=\d)', r'\1', s, flags=RE_FLAGS)
 
-    # Replace special characters outside of numbers with spaces. Special
-    # characters inside numbers are kept because they help us to
-    # distinguish house numbers and post codes from other numbers (e.g.
-    # amounts of money). Since we're not looking for particular numbers
-    # there's also no problem if they're not normalized.
-    s = re.sub(r'(\D|^)\W+(?=\D|$)', r'\1 ', s, flags=RE_FLAGS)
-    s = re.sub(r'(\d)\W+(?=\D|$)', r'\1 ', s, flags=RE_FLAGS)
-    s = re.sub(r'(\D|^)\W+(\d)', r'\1 \2', s, flags=RE_FLAGS)
-    s = re.sub(r'(^|\s+)\W+($|\s+)', ' ', s, flags=RE_FLAGS)
+        # Remove hyphens within words
+        s = re.sub(r'([^\W\d_])-+(?=[^\W\d_])', r'\1', s, flags=RE_FLAGS)
 
-    # Collapse white-space
-    s = re.sub(r'\s+', ' ', s, flags=RE_FLAGS)
+        # Replace special characters outside of numbers with spaces. Special
+        # characters inside numbers are kept because they help us to
+        # distinguish house numbers and post codes from other numbers (e.g.
+        # amounts of money). Since we're not looking for particular numbers
+        # there's also no problem if they're not normalized.
+        s = re.sub(r'(\D|^)\W+(?=\D|$)', r'\1 ', s, flags=RE_FLAGS)
+        s = re.sub(r'(\d)\W+(?=\D|$)', r'\1 ', s, flags=RE_FLAGS)
+        s = re.sub(r'(\D|^)\W+(\d)', r'\1 \2', s, flags=RE_FLAGS)
+        s = re.sub(r'(^|\s+)\W+($|\s+)', ' ', s, flags=RE_FLAGS)
 
-    # Convert 'str' to 'strasse' at the end of a word
-    s = re.sub(r'str\b', 'strasse', s, flags=RE_FLAGS)
+        # Collapse white-space
+        s = re.sub(r'\s+', ' ', s, flags=RE_FLAGS)
 
-    # Stemming. Has pros (e.g. lets us recognize "am Alten Flugplatz" as
-    # a match for "Alter Flugplatz") and cons (e.g. "Wir brauchen eine
-    # breitere Straße" is now a match for "Breite Straße"). Experiments
-    # show that in our case the advantages outweigh the disadvantages.
-    s = ' '.join(_stemmer.stem(word) for word in s.split())
+        # Convert 'str' to 'strasse' at the end of a word
+        s = re.sub(r'str\b', 'strasse', s, flags=RE_FLAGS)
 
-    return s
+        # Stemming. Has pros (e.g. lets us recognize "am Alten Flugplatz" as
+        # a match for "Alter Flugplatz") and cons (e.g. "Wir brauchen eine
+        # breitere Straße" is now a match for "Breite Straße"). Experiments
+        # show that in our case the advantages outweigh the disadvantages.
+        s = ' '.join(_stemmer.stem(word) for word in s.split())
+
+        return s
 
 
 #
@@ -90,19 +93,19 @@ def normalize_string(s):
 # a real application you would load them from a database. In many cases you
 # would also add multiple aliases for the same place.
 
-_places = [
+locations = [
     # POIs
     {
         'name': 'Rathaus',
-        'road': 'Karl-Friedrich-Straße',
-        'house_number': 10,
+        'street': 'Karl-Friedrich-Straße',
+        'house_number': '10',
         'postcode': '76133',
         'city': 'Karlsruhe',
     },
     {
         'name': 'Konzerthaus',
-        'road': 'Festplatz',
-        'house_number': 9,
+        'street': 'Festplatz',
+        'house_number': '9',
         'postcode': '76133',
         'city': 'Karlsruhe',
     },
@@ -130,28 +133,6 @@ _places = [
     },
 ]
 
-_names = {place['name']: place for place in _places}
-_normalized_names = {normalize_string(place['name']): place
-                     for place in _places}
-
-_name_extractor = geoextract.NameExtractor(_normalized_names)
-
-
-def _fix_location(loc):
-    '''
-    De-normalize a location's strings and add info from database.
-    '''
-    for key in ['road', 'city', 'name']:
-        try:
-            loc[key] = _normalized_names[loc[key]]['name']
-        except KeyError:
-            pass
-    try:
-        loc.update(_names[loc['name']])
-    except KeyError:
-        pass
-    return loc
-
 
 #
 # PATTERNS
@@ -171,7 +152,7 @@ _BLOCKS = {
     'postcode': r'\d\d\d\d\d',
 
     # Street name consisting of letters and spaces
-    'road': r'[^\W\d_](?:[^\W\d_]| )*[^\W\d_]',
+    'street': r'[^\W\d_](?:[^\W\d_]| )*[^\W\d_]',
 
     # City name consisting of letters
     'city': r'[^\W\d_]+',
@@ -181,8 +162,8 @@ _BLOCKS = {
 # turned into named groups. Patterns are also automatically anchored using
 # ^ and $.
 _PATTERNS = [
-    '{road} {house_number} {postcode} {city}',
-    '{road} {house_number}',
+    '{street} {house_number} {postcode} {city}',
+    '{street} {house_number}',
 ]
 
 def _init_pattern_extractor():
@@ -207,24 +188,24 @@ _pattern_extractor = _init_pattern_extractor()
 # step by comparing them to reference data (e.g. a list of all valid addresses)
 # and/or heuristics.
 
-def _validate(result):
-    if ('road' not in result) or ('house_number' not in result):
-        # No need for validation
+class Validator(object):
+
+    def setup(self, pipeline):
+        self.locations = pipeline.locations
+
+    def validate(self, result):
+        if 'name' in result:
+            # No need for validation
+            return True
+        if result['street'] not in self.locations:
+            # Discard addresses whose street is not in our list
+            return
+        m = re.match(r'\d+', result['house_number'])
+        num = int(m.group())
+        if num > 500:
+            # Discard addresses whose house number is larger than 500
+            return
         return True
-    try:
-        loc = _normalized_names[result['road']]
-    except KeyError:
-        # Discard addresses whose road is not in our list
-        return
-    m = re.match(r'\d+', result['house_number'])
-    if not m:
-        # Discard addresses whose house number doesn't start with a digit
-        return
-    num = int(m.group())
-    if num > 500:
-        # Discard addresses whose house number is larger than 500
-        return
-    return True
 
 
 #
@@ -232,8 +213,10 @@ def _validate(result):
 #
 
 pipeline = geoextract.Pipeline(
-    extractors=[_pattern_extractor, _name_extractor],
-    validators=[_validate],
+    locations,
+    extractors=[_pattern_extractor, geoextract.NameExtractor()],
+    validators=[Validator()],
+    normalizers=[Normalizer()],
 )
 
 # Now it's time to put all pieces together and extract a list of locations from
@@ -251,11 +234,9 @@ def extract_locations(text):
     components = geoextract.preprocessing.split_components(text, margin=(1, 2))
 
     for _, component in components:
-        component = normalize_string(component)
         results.extend(pipeline.extract(component))
 
-    locations = [_fix_location(r[2]) for r in results]
-    return geoextract.unique_dicts(locations)
+    return geoextract.unique_dicts(results)
 
 
 #
