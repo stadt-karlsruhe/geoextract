@@ -25,6 +25,6 @@ correspond to the true layout of the text. For example, here is a small
 table where a pure line-by-line technique won't work:
 
     Person A                        Person B
-    Rüppurer Straße 12              Kaiserstraße 8
+    Rüppurrer Straße 12             Kaiserstraße 8
     76137 Karlsruhe                 76133 Karlsruhe
 

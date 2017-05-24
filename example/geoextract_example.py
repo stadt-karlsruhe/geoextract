@@ -66,13 +66,16 @@ locations = [
         'name': 'Karl-Friedrich-Straße',
     },
     {
-        'name': 'Rüppurer Straße',
+        'name': 'Rüppurrer Straße',
     },
     {
         'name': 'Karlstraße',
     },
     {
         'name': 'Kaiserstraße',
+    },
+    {
+        'name': 'Festplatz',
     },
 
     # Cities
