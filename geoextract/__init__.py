@@ -329,7 +329,7 @@ class Pipeline(object):
                  normalizer=None, splitter=None):
         self.locations = {loc['name'] : loc for loc in locations}
         self.extractors = extractors or []
-        self.validator = validator
+        self.validator = validator or NameValidator()
         self.normalizer = normalizer or Normalizer()
         self.splitter = splitter or WhitespaceSplitter()
         self._normalize_locations()
@@ -362,7 +362,7 @@ class Pipeline(object):
         Augment a result with information from the location database.
         '''
         # Denormalize names
-        for key in ['name', 'street', 'city']:
+        for key in 'name', 'street', 'city':
             try:
                 result[key] = self.normalized_names[result[key]]['name']
             except KeyError:
@@ -416,6 +416,39 @@ class Pipeline(object):
             if (result[0] + result[1]) > (keep[-1][0] + keep[-1][1]):
                 keep.append(result)
         return keep
+
+
+class NameValidator(object):
+    '''
+    A simple validator that ensures that location names are known.
+
+    For locations that don't have a ``name``, the validator checks that
+    their ``street`` and ``city`` attributes are valid (if they're
+    present). This means that they must refer to a known location in
+    the location database and that that location must be of the correct
+    type (as given by its ``type`` attribute).
+    '''
+    def setup(self, pipeline):
+        self.locations = pipeline.locations
+
+    def validate(self, location):
+        if 'name' in location:
+            # Assume that this location was found by its name, so no
+            # validation is necessary
+            return True
+        for key in 'street', 'city':
+            try:
+                value = location[key]
+            except KeyError:
+                continue
+            try:
+                if not self.locations[value]['type'] == key:
+                    # Known name, but wrong type
+                    return False
+            except KeyError:
+                # Unknown name
+                return False
+        return True
 
 
 class Normalizer(object):

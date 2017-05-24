@@ -23,6 +23,9 @@ RE_FLAGS = re.UNICODE
 # GeoExtract uses a database of known locations to geo-reference a document. In
 # this example the locations are hard-coded, in a real application they would
 # probably be stored in a database.
+#
+# The ``type`` attribute is used for validation, for example to ensure that
+# the string matched for an address' street is actually a street.
 
 locations = [
     # POIs
@@ -32,6 +35,7 @@ locations = [
         'house_number': '10',
         'postcode': '76133',
         'city': 'Karlsruhe',
+        'type': 'poi',
     },
     {
         'name': 'Konzerthaus',
@@ -39,31 +43,39 @@ locations = [
         'house_number': '9',
         'postcode': '76133',
         'city': 'Karlsruhe',
+        'type': 'poi',
     },
 
     # Streets
     {
         'name': 'Marienstraße',
+        'type': 'street',
     },
     {
         'name': 'Karl-Friedrich-Straße',
+        'type': 'street',
     },
     {
         'name': 'Rüppurrer Straße',
+        'type': 'street',
     },
     {
         'name': 'Karlstraße',
+        'type': 'street',
     },
     {
         'name': 'Kaiserstraße',
+        'type': 'street',
     },
     {
         'name': 'Festplatz',
+        'type': 'street',
     },
 
     # Cities
     {
         'name': 'Karlsruhe',
+        'type': 'city',
     },
 ]
 
@@ -122,54 +134,20 @@ address_pattern = re.compile(r'''
 
 pattern_extractor = geoextract.PatternExtractor([address_pattern])
 
-#
-# VALIDATION
-#
-
-# The pattern-based approach will produce a lot of false positives, i.e.
-# candidate locations that only look like an address, for example, but do not
-# correspond to a real location. These need to be filtered out in a validation
-# step by comparing them to reference data (e.g. a list of all valid addresses)
-# and/or heuristics.
-
-class Validator(object):
-
-    def setup(self, pipeline):
-        self.locations = pipeline.locations
-
-    def validate(self, result):
-        if 'name' in result:
-            # No need for validation
-            return True
-        if result['street'] not in self.locations:
-            # Discard addresses whose street is not in our list
-            return
-        m = re.match(r'\d+', result['house_number'])
-        num = int(m.group())
-        if num > 500:
-            # Discard addresses whose house number is larger than 500
-            return
-        try:
-            if result['city'] not in self.locations:
-                # Discard addresses whose city is not in our list
-                return
-        except KeyError:
-            pass
-        return True
-
-validator = Validator()
-
 
 #
 # PIPELINE CONSTRUCTION
 #
 
 # A pipeline connects all the different components.
+#
+# Here we're using custom extractors and a custom normalizer. We could also
+# provide our own code for splitting a document into chunks and for validation,
+# but for simplicity we'll use the default implementations in these cases.
 
 pipeline = geoextract.Pipeline(
     locations,
     extractors=[pattern_extractor, name_extractor],
-    validator=validator,
     normalizer=normalizer,
 )
 
