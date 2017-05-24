@@ -277,7 +277,8 @@ class PatternExtractor(WindowExtractor):
         for pattern in self.patterns:
             m = pattern.search(window)
             if m:
-                yield m.groupdict()
+                yield {k: v for k, v in m.groupdict().iteritems()
+                       if v is not None}
 
 
 class PostalExtractor(WindowExtractor):

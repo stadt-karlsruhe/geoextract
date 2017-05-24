@@ -18,28 +18,12 @@ RE_FLAGS = re.UNICODE
 
 
 #
-# STRING NORMALIZATION
+# LOCATIONS
 #
 
-# Strings must be normalized before searching and matching them. This includes
-# technical normalization (e.g. Unicode normalization), linguistic
-# normalization (e.g. stemming) and content normalization (e.g. synonym
-# handling).
-
-normalizer = geoextract.Normalizer(subs=[(r'str\b', 'strasse')], stem='german')
-
-
-#
-# NAMES
-#
-
-# GeoExtract offers multiple extractors that use different techniques for
-# extracting locations from text. The easiest one is ``NameExtract``, which
-# looks for fixed strings (e.g. the name of POIs).
-
-# These names and their associated data are hard-coded in this example. In
-# a real application you would load them from a database. In many cases you
-# would also add multiple aliases for the same place.
+# GeoExtract uses a database of known locations to geo-reference a document. In
+# this example the locations are hard-coded, in a real application they would
+# probably be stored in a database.
 
 locations = [
     # POIs
@@ -86,54 +70,64 @@ locations = [
 
 
 #
+# STRING NORMALIZATION
+#
+
+# Strings must be normalized before searching and matching them. This includes
+# technical normalization (e.g. Unicode normalization), linguistic
+# normalization (e.g. stemming) and content normalization (e.g. synonym
+# handling).
+
+normalizer = geoextract.Normalizer(subs=[(r'str\b', 'strasse')], stem='german')
+
+
+#
+# NAMES
+#
+
+# Many places can be referred to using just their name, for example specific
+# buildings (e.g. the Brandenburger Tor), streets (Hauptstraße) or other
+# points of interest. These can be extracted using the ``NameExtractor``.
+#
+# Note that extractor will automatically receive the (normalized) location
+# names from the pipeline we construct later, so there's no need to explicitly
+# pass them to the constructor.
+
+name_extractor = geoextract.NameExtractor()
+
+
+#
 # PATTERNS
 #
 
-# For locations that are notated using a semi-structured format (like
-# addresses) the ``PatternExtractor`` is a good choice. It looks for
-# matches of regular expressions.
+# For locations that are notated using a semi-structured format (addresses)
+# the ``PatternExtractor`` is a good choice. It looks for matches of regular
+# expressions.
+#
+# The patterns should have named groups, their sub-matches will be
+# returned in the extracted locations.
 
-# Blocks are named sub-patterns
-_BLOCKS = {
-    # House number, including potential alphabetical suffix (`12c`)
-    # and ranges (`12-23`)
-    'house_number': r'([1-9]\d*)[\w-]*',
+address_pattern = re.compile(r'''
+    (?P<street>[^\W\d_](?:[^\W\d_]|\s)*[^\W\d_])
+    \s+
+    (?P<house_number>([1-9]\d*)[\w-]*)
+    (
+        \s+
+        (
+            (?P<postcode>\d{5})
+            \s+
+        )?
+        (?P<city>([^\W\d_]|-)+)
+    )?
+''', flags=re.UNICODE | re.VERBOSE)
 
-    # German 5-digit PLZ
-    'postcode': r'\d\d\d\d\d',
-
-    # Street name consisting of letters and spaces
-    'street': r'[^\W\d_](?:[^\W\d_]| )*[^\W\d_]',
-
-    # City name consisting of letters
-    'city': r'[^\W\d_]+',
-}
-
-# Patterns can contain blocks via `{block_name}`, these are automatically
-# turned into named groups. Patterns are also automatically anchored using
-# ^ and $.
-_PATTERNS = [
-    '{street} {house_number} {postcode} {city}',
-    '{street} {house_number}',
-]
-
-def _init_pattern_extractor():
-    blocks = {key: '(?P<{}>{})'.format(key, value)
-               for key, value in _BLOCKS.items()}
-    patterns = []
-    for pattern in _PATTERNS:
-        full = '^' + pattern.format(**blocks) + '$'
-        patterns.append(re.compile(full, flags=RE_FLAGS))
-    return geoextract.PatternExtractor(patterns)
-
-_pattern_extractor = _init_pattern_extractor()
-
+pattern_extractor = geoextract.PatternExtractor([address_pattern])
 
 #
 # VALIDATION
 #
 
-# Our pattern-based approach will produce a lot of false positives, i.e.
+# The pattern-based approach will produce a lot of false positives, i.e.
 # candidate locations that only look like an address, for example, but do not
 # correspond to a real location. These need to be filtered out in a validation
 # step by comparing them to reference data (e.g. a list of all valid addresses)
@@ -156,6 +150,12 @@ class Validator(object):
         if num > 500:
             # Discard addresses whose house number is larger than 500
             return
+        try:
+            if result['city'] not in self.locations:
+                # Discard addresses whose city is not in our list
+                return
+        except KeyError:
+            pass
         return True
 
 
@@ -165,7 +165,7 @@ class Validator(object):
 
 pipeline = geoextract.Pipeline(
     locations,
-    extractors=[_pattern_extractor, geoextract.NameExtractor()],
+    extractors=[pattern_extractor, name_extractor],
     validators=[Validator()],
     normalizers=[normalizer],
 )
@@ -208,5 +208,5 @@ if __name__ == '__main__':
 
     locations = extract_locations(text)
 
-    pprint(locations)
+    pprint(sorted(locations))
 
