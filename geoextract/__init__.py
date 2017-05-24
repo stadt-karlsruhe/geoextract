@@ -36,9 +36,14 @@ import itertools
 import re
 
 import ahocorasick
+from nltk.stem.snowball import SnowballStemmer
+from unidecode import unidecode
 
 
 __version__ = '0.1.0'
+
+# Flags for regular expressions
+_RE_FLAGS = re.UNICODE
 
 
 # From the (old) itertools docs, see
@@ -411,4 +416,67 @@ class Pipeline(object):
             if (result[0] + result[1]) > (keep[-1][0] + keep[-1][1]):
                 keep.append(result)
         return keep
+
+
+class Normalizer(object):
+    '''
+    A versatile string normalizer.
+    '''
+    def __init__(self, to_ascii=True, rejoin_lines=True, remove_hyphens=True,
+                 remove_specials=True, subs=None, stem=None):
+        '''
+        Constructor.
+
+        If ``to_ascii`` is true then the text is converted to ASCII-only
+        using ``unidecode``.
+
+        If ``rejoin_lines`` is true then lines split using a hyphen are
+        rejoined.
+
+        If ``remove_hyphens`` is true then hyphens within words are
+        removed. Note that hyphens within numbers are always kept.
+
+        If ``remove_specials`` is true then special characters are
+        replaced with spaces. Note that special characters within
+        numbers are kept.
+
+        ``subs`` is an optional list of substitution pairs. These pairs
+        are passed to ``re.sub``.
+
+        Set ``stem`` to any language name supported by
+        ``nltk.stem.snowball`` (e.g. ``'german'``) to stem words.
+        '''
+        if stem:
+            self._stemmer = SnowballStemmer(stem)
+        else:
+            self._stemmer = None
+        self.to_ascii = to_ascii
+        self.rejoin_lines = rejoin_lines
+        self.remove_hyphens = remove_hyphens
+        self.remove_specials = remove_specials
+        self.subs = subs
+
+    def normalize(self, s):
+        '''
+        Normalize text.
+        '''
+        s = s.strip().lower()
+        if self.to_ascii:
+            s = unidecode(s)
+        if self.rejoin_lines:
+            s = re.sub(r'(\w-)\s*\n\s*', r'\1', s, flags=_RE_FLAGS)
+        if self.remove_hyphens:
+            s = re.sub(r'([^\W\d_])-+(?=[^\W\d_])', r'\1', s, flags=_RE_FLAGS)
+        if self.remove_specials:
+            s = re.sub(r'(\D|^)([^\w\s]|_)+(?=\D|$)', r'\1 ', s,
+                       flags=_RE_FLAGS)
+            s = re.sub(r'(\w)([^\w\s]|_)+\s+', r'\1 ', s, flags=_RE_FLAGS)
+            s = re.sub(r'\s+([^\w\s]|_)+(?=\w)', r'\1 ', s, flags=_RE_FLAGS)
+        for pattern, replacement in self.subs:
+            s = re.sub(pattern, replacement, s, flags=_RE_FLAGS)
+        if self._stemmer:
+            callback = lambda m: self._stemmer.stem(m.group())
+            s = re.sub(r'([^\W\d_]|-)+', callback, s, flags=_RE_FLAGS)
+        s = re.sub(r'\s+', ' ', s, flags=_RE_FLAGS)
+        return s
 
