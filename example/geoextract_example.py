@@ -157,6 +157,8 @@ class Validator(object):
             pass
         return True
 
+validator = Validator()
+
 
 #
 # PIPELINE CONSTRUCTION
@@ -167,8 +169,8 @@ class Validator(object):
 pipeline = geoextract.Pipeline(
     locations,
     extractors=[pattern_extractor, name_extractor],
-    validators=[Validator()],
-    normalizers=[normalizer],
+    validator=validator,
+    normalizer=normalizer,
 )
 
 

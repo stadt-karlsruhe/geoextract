@@ -325,12 +325,12 @@ class Pipeline(object):
     '''
     A geoextraction pipeline.
     '''
-    def __init__(self, locations, extractors=None, validators=None,
-                 normalizers=None, splitter=None):
+    def __init__(self, locations, extractors=None, validator=None,
+                 normalizer=None, splitter=None):
         self.locations = {loc['name'] : loc for loc in locations}
         self.extractors = extractors or []
-        self.validators = validators or []
-        self.normalizers = normalizers or []
+        self.validator = validator
+        self.normalizer = normalizer or Normalizer()
         self.splitter = splitter or WhitespaceSplitter()
         self._normalize_locations()
         self._setup_components()
@@ -340,11 +340,10 @@ class Pipeline(object):
             setup = getattr(c, 'setup', None)
             if setup:
                 setup(self)
-        for component in itertools.chain(self.extractors, self.validators,
-                                         self.normalizers):
+        for component in self.extractors:
             setup_component(component)
-        setup_component(self.splitter)
-
+        for component in [self.normalizer, self.splitter, self.validator]:
+            setup_component(component)
 
     def _normalize_locations(self):
         '''
@@ -352,9 +351,11 @@ class Pipeline(object):
         '''
         self.normalized_names = {}
         for location in self.locations.itervalues():
-            self.normalized_names[self._normalize(location['name'])] = location
+            normalized_name = self.normalizer.normalize(location['name'])
+            self.normalized_names[normalized_name] = location
             for alias in location.get('alias', []):
-                self.normalized_names[self._normalize(alias)] = location
+                normalized_alias = self.normalizer.normalize(alias)
+                self.normalized_names[normalized_alias] = location
 
     def _augment_result(self, result):
         '''
@@ -376,7 +377,7 @@ class Pipeline(object):
         '''
         Extract locations from a text.
         '''
-        parts = map(self._normalize, self.splitter.split(text))
+        parts = map(self.normalizer.normalize, self.splitter.split(text))
         results = []
         for part in parts:
             candidates = []
@@ -391,25 +392,11 @@ class Pipeline(object):
         '''
         Validate a list of candidate locations.
 
-        Returns a list of all candidates that were approved by all
-        validators.
+        Returns those candidates that were approved by the validator.
         '''
-        validated = []
-        for candidate in candidates:
-            for validator in self.validators:
-                if not validator.validate(candidate[2]):
-                    break
-            else:
-                validated.append(candidate)
-        return validated
-
-    def _normalize(self, s):
-        '''
-        Run a string through all normalizers.
-        '''
-        for normalizer in self.normalizers:
-            s = normalizer.normalize(s)
-        return s
+        if not self.validator:
+            return candidates
+        return [c for c in candidates if self.validator.validate(c[2])]
 
     @staticmethod
     def _prune_overlapping(results):
