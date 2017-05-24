@@ -15,9 +15,9 @@ However, not everything that looks like an address also is one. Often, street
 names are followed by numbers that are not really house numbers, for example
 when listing how much it will cost to repair those streets:
 
-    STREET                COSTS
-    Festplatz              1000
-    Karl-Friedrich-Straße   943
+    STREET                COST
+    Festplatz             1000
+    Karl-Friedrich-Straße  943
 
 One also has to take the layout of the text into consideration. Typically,
 software processes text in a line-by-line fashion, but that doesn't always

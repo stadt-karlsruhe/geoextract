@@ -39,6 +39,8 @@ import ahocorasick
 from nltk.stem.snowball import SnowballStemmer
 from unidecode import unidecode
 
+from .splitters import WhitespaceSplitter
+
 
 __version__ = '0.1.0'
 
@@ -81,7 +83,7 @@ def _split(s):
 
 
 
-def unique_dicts(dicts):
+def _unique_dicts(dicts):
     '''
     Remove duplicates from a list of dicts.
     '''
@@ -209,10 +211,10 @@ class WindowExtractor(Extractor):
         you shouldn't reduce ``start_len`` (a fast way of extracting
         fixed strings is provided by ``NameExtractor``). The value of
         ``stop_len`` should match the maximum number of space-separated
-        components that you expect in your locations. For example, if
-        you're looking for locations of the form ``<name> + <number>``
-        and ``name`` may contain up to 3 spaces then set ``stop_len=4``
-        to check windows with up to 4 words.
+        tokens that you expect in your locations. For example, if you're
+        looking for locations of the form ``<name> + <number>`` and
+        ``name`` may contain up to 3 spaces then set ``stop_len=4`` to
+        check windows with up to 4 words.
         '''
         self.start_len = start_len
         self.stop_len = stop_len
@@ -324,11 +326,12 @@ class Pipeline(object):
     A geoextraction pipeline.
     '''
     def __init__(self, locations, extractors=None, validators=None,
-                 normalizers=None):
+                 normalizers=None, splitter=None):
         self.locations = {loc['name'] : loc for loc in locations}
         self.extractors = extractors or []
         self.validators = validators or []
         self.normalizers = normalizers or []
+        self.splitter = splitter or WhitespaceSplitter()
         self._normalize_locations()
         self._setup_components()
 
@@ -365,15 +368,20 @@ class Pipeline(object):
         except KeyError:
             pass
 
-    def extract(self, document):
-        candidates = []
-        normalized = self._normalize(document)
-        for extractor in self.extractors:
-            candidates.extend(extractor.extract(normalized))
-        for candidate in candidates:
-            self._augment_result(candidate[2])
-        results = self._prune_overlapping(self._validate(candidates))
-        return [result[2] for result in results]
+    def extract(self, text):
+        '''
+        Extract locations from a text.
+        '''
+        parts = map(self._normalize, self.splitter.split(text))
+        results = []
+        for part in parts:
+            candidates = []
+            for extractor in self.extractors:
+                candidates.extend(extractor.extract(part))
+            for candidate in candidates:
+                self._augment_result(candidate[2])
+            results.extend(self._prune_overlapping(self._validate(candidates)))
+        return _unique_dicts([result[2] for result in results])
 
     def _validate(self, candidates):
         '''

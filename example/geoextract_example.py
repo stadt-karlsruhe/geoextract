@@ -11,7 +11,6 @@ from __future__ import (absolute_import, division, print_function,
 import re
 
 import geoextract
-import geoextract.preprocessing
 
 
 RE_FLAGS = re.UNICODE
@@ -160,8 +159,10 @@ class Validator(object):
 
 
 #
-# LOCATION EXTRACTION
+# PIPELINE CONSTRUCTION
 #
+
+# A pipeline connects all the different components.
 
 pipeline = geoextract.Pipeline(
     locations,
@@ -169,25 +170,6 @@ pipeline = geoextract.Pipeline(
     validators=[Validator()],
     normalizers=[normalizer],
 )
-
-# Now it's time to put all pieces together and extract a list of locations from
-# a text.
-
-def extract_locations(text):
-    '''
-    Extract locations from plain text.
-
-    Returns a list of dicts.
-    '''
-    results = []
-
-    # Split text into whitespace-separated components
-    components = geoextract.preprocessing.split_components(text, margin=(1, 2))
-
-    for _, component in components:
-        results.extend(pipeline.extract(component))
-
-    return geoextract.unique_dicts(results)
 
 
 #
@@ -206,7 +188,7 @@ if __name__ == '__main__':
     with io.open(filename, 'r', encoding='utf-8') as f:
         text = f.read()
 
-    locations = extract_locations(text)
+    locations = pipeline.extract(text)
 
     pprint(sorted(locations))
 
