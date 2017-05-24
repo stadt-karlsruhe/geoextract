@@ -336,11 +336,15 @@ class Pipeline(object):
         self._setup_components()
 
     def _setup_components(self):
-        for component in itertools.chain(self.extractors, self.validators,
-                                         self.normalizers):
-            setup = getattr(component, 'setup', None)
+        def setup_component(c):
+            setup = getattr(c, 'setup', None)
             if setup:
                 setup(self)
+        for component in itertools.chain(self.extractors, self.validators,
+                                         self.normalizers):
+            setup_component(component)
+        setup_component(self.splitter)
+
 
     def _normalize_locations(self):
         '''
