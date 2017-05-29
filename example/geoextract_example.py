@@ -13,9 +13,6 @@ import re
 import geoextract
 
 
-RE_FLAGS = re.UNICODE
-
-
 #
 # LOCATIONS
 #
