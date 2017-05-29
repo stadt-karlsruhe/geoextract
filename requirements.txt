@@ -1,3 +1,6 @@
 pyahocorasick
 numpy
 scipy
+unidecode
+nltk
+
