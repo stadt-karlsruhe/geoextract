@@ -328,7 +328,7 @@ class Pipeline(object):
     def __init__(self, locations, extractors=None, validator=None,
                  normalizer=None, splitter=None):
         self.locations = {loc['name'] : loc for loc in locations}
-        self.extractors = extractors or []
+        self.extractors = extractors or [NameExtractor()]
         self.validator = validator or NameValidator()
         self.normalizer = normalizer or Normalizer()
         self.splitter = splitter or WhitespaceSplitter()
