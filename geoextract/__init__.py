@@ -82,12 +82,26 @@ def _split(s):
     return parts
 
 
+# Keys which are used to distinguish locations
+_UNIQUE_LOCATION_KEYS = ['name', 'street', 'house_number', 'postcode', 'city']
 
-def _unique_dicts(dicts):
+
+def _unique_locations(locations):
     '''
-    Remove duplicates from a list of dicts.
+    Remove duplicates from a list of locations.
+
+    Locations are compared based on their values for the keys in
+    ``_UNIQUE_LOCATION_KEYS``.
     '''
-    return [dict(s) for s in set(frozenset(d.items()) for d in dicts)]
+    unique_keys = set()
+    unique_locations = []
+    for location in locations:
+        key = tuple((key, location.get(key, None))
+                     for key in _UNIQUE_LOCATION_KEYS)
+        if key not in unique_keys:
+            unique_keys.add(key)
+            unique_locations.append(location)
+    return unique_locations
 
 
 class Extractor(object):
@@ -353,7 +367,7 @@ class Pipeline(object):
         for location in self.locations.itervalues():
             normalized_name = self.normalizer.normalize(location['name'])
             self.normalized_names[normalized_name] = location
-            for alias in location.get('alias', []):
+            for alias in location.get('aliases', []):
                 normalized_alias = self.normalizer.normalize(alias)
                 self.normalized_names[normalized_alias] = location
 
@@ -386,7 +400,7 @@ class Pipeline(object):
             for candidate in candidates:
                 self._augment_result(candidate[2])
             results.extend(self._prune_overlapping(self._validate(candidates)))
-        return _unique_dicts([result[2] for result in results])
+        return _unique_locations([result[2] for result in results])
 
     def _validate(self, candidates):
         '''

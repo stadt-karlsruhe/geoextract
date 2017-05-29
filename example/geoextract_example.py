@@ -27,7 +27,8 @@ import geoextract
 locations = [
     # POIs
     {
-        'name': 'Rathaus',
+        'name': 'Rathaus am Marktplatz',
+        'aliases': ['Rathaus'],
         'street': 'Karl-Friedrich-Straße',
         'house_number': '10',
         'postcode': '76133',
