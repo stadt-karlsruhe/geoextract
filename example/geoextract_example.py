@@ -166,6 +166,5 @@ if __name__ == '__main__':
         text = f.read()
 
     locations = pipeline.extract(text)
-
     pprint(sorted(locations))
 
