@@ -40,6 +40,7 @@ from nltk.stem.snowball import SnowballStemmer
 from unidecode import unidecode
 
 from .splitters import WhitespaceSplitter
+from .app import create_app
 
 
 __version__ = '0.1.0'
@@ -446,6 +447,13 @@ class Pipeline(object):
             if (result[0] + result[1]) > (keep[-1][0] + keep[-1][1]):
                 keep.append(result)
         return keep
+
+    def serve(self):
+        '''
+        Serve the pipeline as a web service.
+        '''
+        app = create_app(self)
+        app.run()
 
 
 class NameValidator(object):

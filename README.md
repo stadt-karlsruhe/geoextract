@@ -43,6 +43,19 @@ a sample input file is also included:
 
     python example/geoextract_example.py example/sample_input.txt
 
+If no parameter is given then the example script starts a web server which
+provides location extraction as a web service:
+
+    python example/geoextract_example.py
+
+To use the web service, send a POST request to `/api/v1/extract`. The request
+must have a parameter `text` containing the UTF-8 encoded text. For example,
+using the excellent [HTTPie] client:
+
+    http -f post http://localhost:5000/api/v1/extract text@example/sample_input.txt
+
+[HTTPie]: https://httpie.org/
+
 
 ## Installation
 
@@ -63,7 +76,6 @@ the virtualenv picks up the system-wide installations of NumPy and SciPy:
 Installing GeoExtract is then easy using [pip][pip]:
 
     pip install git+https://github.com/stadt-karlsruhe/geoextract.git
-
 
 [numpy]: http://www.numpy.org/
 [scipy]: https://www.scipy.org/

@@ -28,25 +28,39 @@ Web app providing an GeoExtract web API.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from flask import abort, Flask, request
+from flask import abort, Flask, jsonify, request
 
 
-app = Flask('geoextract')
-app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1 MB
+def create_app(pipeline):
+    '''
+    Create a Flask app for serving a pipeline as a web service.
 
+    ``pipeline`` is an instance of ``geoextract.Pipeline``.
 
-@app.route('/')
-def index():
-    return 'Welcome to GeoExtract'
+    Returns a Flask app that exposes the pipeline's ``extract`` method
+    as a web API endpoint at ``/api/v1/extract``. The end point takes
+    a single file-upload POST parameter named ``text`` which contains
+    the UTF-8 encoded raw text from which locations should be extracted.
+    '''
+    app = Flask('geoextract')
+    app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1 MB
 
+    # Late import to avoid circular dependency
+    import geoextract
 
-@app.route('/api/v1/extract', methods=['POST'])
-def extract():
-    try:
-        text = request.files['text'].read().decode('utf-8')
-    except KeyError:
-        abort(400, 'Missing "text" parameter.')
-    except UnicodeDecodeError:
-        abort(400, 'Decoding error. Make sure your data is encoded as UTF-8.')
-    return 'Your text was "{}"'.format(text)
+    @app.route('/')
+    def index():
+        return 'GeoExtract {}'.format(geoextract.__version__)
+
+    @app.route('/api/v1/extract', methods=['POST'])
+    def extract():
+        try:
+            text = request.files['text'].read().decode('utf-8')
+        except KeyError:
+            abort(400, 'Missing "text" parameter.')
+        except UnicodeDecodeError:
+            abort(400, 'Decoding error. Data must be encoded as UTF-8.')
+        return jsonify(pipeline.extract(text))
+
+    return app
 

@@ -171,18 +171,23 @@ pipeline = geoextract.Pipeline(
 # COMMAND LINE INTERFACE
 #
 
+# This example can be used to either extract locations from a file specified on
+# the command line or (if no additional argument is given) to start a web
+# server which provides location extraction as a web service.
+
 if __name__ == '__main__':
     import io
     from pprint import pprint
     import sys
 
-    if len(sys.argv) != 2:
-        sys.exit('Usage: {} FILENAME'.format(sys.argv[0]))
-    filename = sys.argv[1]
-
-    with io.open(filename, 'r', encoding='utf-8') as f:
-        text = f.read()
-
-    locations = pipeline.extract(text)
-    pprint(sorted(locations))
+    if len(sys.argv) == 1:
+        # Serve web API
+        pipeline.serve()
+    if len(sys.argv) == 2:
+        # Extract locations from the given file
+        filename = sys.argv[1]
+        with io.open(filename, 'r', encoding='utf-8') as f:
+            text = f.read()
+        locations = pipeline.extract(text)
+        pprint(sorted(locations))
 
