@@ -95,7 +95,7 @@ Install GeoExtract in development mode:
 
 ## License
 
-Copyright (c) 2016, Stadt Karlsruhe (www.karlsruhe.de)
+Copyright (c) 2016-2017, Stadt Karlsruhe (www.karlsruhe.de)
 
 Distributed under the MIT license, see the file `LICENSE` for details.
 

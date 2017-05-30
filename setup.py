@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-# Copyright (c) 2016, Stadt Karlsruhe (www.karlsruhe.de)
+# Copyright (c) 2016-2017, Stadt Karlsruhe (www.karlsruhe.de)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
