@@ -340,12 +340,13 @@ class Pipeline(object):
     A geoextraction pipeline.
     '''
     def __init__(self, locations, extractors=None, validator=None,
-                 normalizer=None, splitter=None):
+                 normalizer=None, splitter=None, postprocessors=None):
         self.locations = {loc['name'] : loc for loc in locations}
         self.extractors = extractors or [NameExtractor()]
         self.validator = validator or NameValidator()
         self.normalizer = normalizer or Normalizer()
         self.splitter = splitter or WhitespaceSplitter()
+        self.postprocessors = postprocessors or []
         self._normalize_locations()
         self._setup_components()
 
@@ -354,7 +355,7 @@ class Pipeline(object):
             setup = getattr(c, 'setup', None)
             if setup:
                 setup(self)
-        for component in self.extractors:
+        for component in itertools.chain(self.extractors, self.postprocessors):
             setup_component(component)
         for component in [self.normalizer, self.splitter, self.validator]:
             setup_component(component)
@@ -400,7 +401,22 @@ class Pipeline(object):
             for candidate in candidates:
                 self._augment_result(candidate[2])
             results.extend(self._prune_overlapping(self._validate(candidates)))
-        return _unique_locations([result[2] for result in results])
+        unique = _unique_locations([result[2] for result in results])
+        return self._postprocess(unique)
+
+    def _postprocess(self, locations):
+        '''
+        Postprocess a list of locations.
+        '''
+        postprocessed = []
+        for location in locations:
+            for postprocessor in self.postprocessors:
+                location = postprocessor.postprocess(location)
+                if not location:
+                    break
+            if location:
+                postprocessed.append(location)
+        return postprocessed
 
     def _validate(self, candidates):
         '''
@@ -526,4 +542,22 @@ class Normalizer(object):
             s = re.sub(r'([^\W\d_]|-)+', callback, s, flags=_RE_FLAGS)
         s = re.sub(r'\s+', ' ', s, flags=_RE_FLAGS)
         return s
+
+
+class KeyFilterPostprocessor(object):
+    '''
+    Simple postprocessor that filters a location's keys.
+    '''
+    def __init__(self, keys):
+        '''
+        Constructor.
+
+        ``keys`` is a list of keys to keep. All other keys will be
+        removed during postprocessing.
+        '''
+        self.keys = set(keys)
+
+    def postprocess(self, location):
+        return {key: value for key, value in location.iteritems()
+                if key in self.keys}
 

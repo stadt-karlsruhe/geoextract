@@ -134,6 +134,22 @@ pattern_extractor = geoextract.PatternExtractor([address_pattern])
 
 
 #
+# POSTPROCESSING
+#
+
+# Once locations are extracted you might want to postprocess them, for example
+# to remove certain attributes that are useful for validation but are not
+# intended for publication. Or you may want to remove a certain address that's
+# printed in the footer of all the documents you're processing.
+#
+# GeoExtract allows you to do this by using one or more postprocessors. In this
+# example we will remove all but a few keys from our location dicts.
+
+KEYS_TO_KEEP = ['name', 'street', 'house_number', 'postcode', 'city']
+key_filter_postprocessor = geoextract.KeyFilterPostprocessor(KEYS_TO_KEEP)
+
+
+#
 # PIPELINE CONSTRUCTION
 #
 
@@ -147,6 +163,7 @@ pipeline = geoextract.Pipeline(
     locations,
     extractors=[pattern_extractor, name_extractor],
     normalizer=normalizer,
+    postprocessors=[key_filter_postprocessor],
 )
 
 
