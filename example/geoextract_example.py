@@ -182,7 +182,7 @@ if __name__ == '__main__':
 
     if len(sys.argv) == 1:
         # Serve web API
-        pipeline.serve()
+        pipeline.create_app().run()
     if len(sys.argv) == 2:
         # Extract locations from the given file
         filename = sys.argv[1]

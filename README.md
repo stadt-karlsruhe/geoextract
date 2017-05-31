@@ -1,8 +1,7 @@
 # GeoExtract
 
-This library provides a framework for extracting locations (addresses,
-street names, points of interest) from free-form text. It is intended
-for geo-referencing existing documents.
+GeoExtract is a web service and Python package for extracting locations
+(addresses, street names, points of interest) from free-form text.
 
 
 ## Background
@@ -22,8 +21,8 @@ validation. In other cases, you might only have a list of valid street names
 and will have to validate house numbers heuristically.
 
 GeoExtract helps you to find potential locations and to filter and organize
-validated candidates. It is by no means a turnkey solution but instead provides
-a framework on which you can build a solution for your use case.
+validated candidates. It is no turnkey solution but instead provides a
+framework on which you can build a solution for your use case.
 
 [falsehoods]: https://www.mjt.me.uk/posts/falsehoods-programmers-believe-about-addresses/
 [openaddresses]: https://openaddresses.io/
@@ -81,6 +80,17 @@ using the excellent [HTTPie] client:
     http -f post http://localhost:5000/api/v1/extract text@example/sample_input.txt
 
 [HTTPie]: https://httpie.org/
+
+
+## Deployment
+
+To deploy GeoExtract as a web service, construct an instance of
+`geoextract.Pipeline` (see the example in the `example` directory) and turn it
+into a [Flask] app via the `create_app` method. You can then deploy that app
+using the usual approaches for [deploying Flask applications].
+
+[Flask]: http://flask.pocoo.org
+[deploying Flask applications]: http://flask.pocoo.org/docs/latest/deploying/
 
 
 ## Development

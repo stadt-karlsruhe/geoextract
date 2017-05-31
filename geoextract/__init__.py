@@ -448,12 +448,11 @@ class Pipeline(object):
                 keep.append(result)
         return keep
 
-    def serve(self):
+    def create_app(self):
         '''
-        Serve the pipeline as a web service.
+        Create a Flask app for serving the pipeline as a web service.
         '''
-        app = create_app(self)
-        app.run()
+        return create_app(self)
 
 
 class NameValidator(object):
