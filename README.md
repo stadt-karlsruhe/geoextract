@@ -105,6 +105,11 @@ Install GeoExtract in development mode:
     python setup.py develop
 
 
+## History
+
+See `CHANGELOG.md`.
+
+
 ## License
 
 Copyright (c) 2016-2017, Stadt Karlsruhe (www.karlsruhe.de)
