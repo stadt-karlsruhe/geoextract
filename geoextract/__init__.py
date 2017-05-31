@@ -43,7 +43,7 @@ from .splitters import WhitespaceSplitter
 from .app import create_app
 
 
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 
 # Flags for regular expressions
 _RE_FLAGS = re.UNICODE
