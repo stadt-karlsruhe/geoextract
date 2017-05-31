@@ -29,6 +29,32 @@ a framework on which you can build a solution for your use case.
 [openaddresses]: https://openaddresses.io/
 
 
+## Installation
+
+GeoExtract relies on [NumPy][numpy] and [SciPy][scipy], which are cumbersome
+to install from source. We therefore suggest to use your system's package
+manager to install them via pre-built packages. For example, on Ubuntu you
+would use
+
+    sudo apt-get install python-numpy python-scipy
+
+We also recommend to use a [virtualenv][virtualenv] for installing
+GeoExtract. Make sure to pass the `--system-site-packages` parameter so that
+the virtualenv picks up the system-wide installations of NumPy and SciPy:
+
+    virtualenv -p python2 --system-site-packages my_virtualenv
+    source my_virtualenv/bin/activate
+
+Installing GeoExtract is then easy using [pip][pip]:
+
+    pip install git+https://github.com/stadt-karlsruhe/geoextract.git
+
+[numpy]: http://www.numpy.org/
+[scipy]: https://www.scipy.org/
+[virtualenv]: https://virtualenv.pypa.io
+[pip]: https://pip.pypa.io
+
+
 ## Usage
 
 GeoExtract provides a pipeline for organizing the extraction process of
@@ -55,32 +81,6 @@ using the excellent [HTTPie] client:
     http -f post http://localhost:5000/api/v1/extract text@example/sample_input.txt
 
 [HTTPie]: https://httpie.org/
-
-
-## Installation
-
-GeoExtract relies on [NumPy][numpy] and [SciPy][scipy], which are cumbersome
-to install from source. We therefore suggest to use your system's package
-manager to install them via pre-built packages. For example, on Ubuntu you
-would use
-
-    sudo apt-get install python-numpy python-scipy
-
-We also recommend to use a [virtualenv][virtualenv] for installing
-GeoExtract. Make sure to pass the `--system-site-packages` parameter so that
-the virtualenv picks up the system-wide installations of NumPy and SciPy:
-
-    virtualenv -p python2 --system-site-packages my_virtualenv
-    source my_virtualenv/bin/activate
-
-Installing GeoExtract is then easy using [pip][pip]:
-
-    pip install git+https://github.com/stadt-karlsruhe/geoextract.git
-
-[numpy]: http://www.numpy.org/
-[scipy]: https://www.scipy.org/
-[virtualenv]: https://virtualenv.pypa.io
-[pip]: https://pip.pypa.io
 
 
 ## Development
