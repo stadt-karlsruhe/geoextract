@@ -186,7 +186,7 @@ class WindowExtractor(Extractor):
 
     To avoid this problem, subclasses of this class scan the text
     multiple times using windows of a varying number of space-separated
-    words:
+    words::
 
         We meet               #
         meet at               #
