@@ -1,5 +1,7 @@
 # GeoExtract
 
+[![Travis CI badge](https://travis-ci.org/stadt-karlsruhe/geoextract.svg?branch=master)](https://travis-ci.org/stadt-karlsruhe/geoextract)
+
 GeoExtract is a web service and Python package for extracting locations
 (addresses, street names, points of interest) from free-form text.
 
