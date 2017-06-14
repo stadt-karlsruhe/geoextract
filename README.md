@@ -114,6 +114,14 @@ Install GeoExtract in development mode:
 
     python setup.py develop
 
+Install the development dependencies:
+
+    pip install -r dev-requirements.txt
+
+Run the tests:
+
+    pytest
+
 
 ## History
 

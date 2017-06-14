@@ -1,6 +1,7 @@
 /venv/
 /dist/
 /build/
+/.cache/
 /README.html
 
 *.egg-info/
