@@ -6,6 +6,11 @@ project uses [Semantic Versioning].
 
 ## [Unreleased]
 
+### Changed
+
+- The constructor of `geoextract.PatternExtractor` now accepts raw (not
+  compiled) regex strings.
+
 ### Fixed
 
 - `geoextract.WindowExtractor` and its subclasses ignored the first word of

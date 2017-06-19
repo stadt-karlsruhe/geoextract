@@ -266,15 +266,16 @@ class PatternExtractor(WindowExtractor):
         '''
         Constructor.
 
-        ``patterns`` is a list of *compiled* regular expression objects.
-        Each of these must include named groups. The names of the groups
-        are used by ``extract`` to build the result dict.
+        ``patterns`` is a list of regular expressions. Each of these
+        must include named groups (``(?P<my_group>...)``). The names of
+        the groups are used by ``extract`` to build the result dict.
 
         See ``WindowExtractor`` for the meaning of ``start_len`` and
         ``stop_len``.
         '''
         super(PatternExtractor, self).__init__(start_len, stop_len)
-        self.patterns = patterns
+        # Note that re.compile is idempotent
+        self.patterns = [re.compile(p) for p in patterns]
 
     def _window_extract(self, window):
         '''
