@@ -31,7 +31,7 @@ from geoextract import *
 
 class TestNameExtractor(object):
     '''
-    Test ``geoextract.NameExtractor.
+    Test ``geoextract.NameExtractor``.
     '''
     def setup(self):
         self.ex = NameExtractor()
@@ -75,4 +75,59 @@ class TestNameExtractor(object):
         Test that only complete words are matched.
         '''
         self.check('xfoo xfooy foox', [])
+
+
+class TestWindowExtractor(object):
+    '''
+    Test ``geoextract.WindowExtractor``.
+    '''
+    def check_windows(self, text, start_len=2, stop_len=3):
+        windows = []
+        class DummyExtractor(WindowExtractor):
+            def _window_extract(self, window):
+                windows.append(window)
+                return []
+        list(DummyExtractor(start_len, stop_len).extract(text))
+        return windows
+
+    def check_results(self, text, start_len=2, stop_len=3):
+        class DummyExtractor(WindowExtractor):
+            def _window_extract(self, window):
+                yield {'name': window}
+        return list(DummyExtractor(start_len, stop_len).extract(text))
+
+    def test_leading_and_trailing_whitespace(self):
+        '''
+        Test leading and trailing whitespace is ignored.
+        '''
+        assert self.check_windows('  a b c') == ['a b', 'b c', 'a b c']
+        assert self.check_windows('a b c  ') == ['a b', 'b c', 'a b c']
+        assert self.check_windows('  a b c  ') == ['a b', 'b c', 'a b c']
+
+    def test_whitespace_collapse(self):
+        '''
+        Test that whitespace between words is collapsed.
+        '''
+        assert self.check_windows('a  b\tc\nd') == ['a b', 'b c', 'c d',
+                                                    'a b c', 'b c d']
+
+    def test_single_width(self):
+        '''
+        Test windows of a single width.
+        '''
+        assert self.check_windows('a b c', 1, 1) == ['a', 'b', 'c']
+        assert self.check_windows('a b c', 2, 2) == ['a b', 'b c']
+        assert self.check_windows('a b c', 3, 3) == ['a b c']
+
+    def test_match_meta_data(self):
+        '''
+        Test meta-data of matches.
+        '''
+        assert self.check_results('a b c d') == [
+            (0, 3, {'name': 'a b'}),
+            (2, 3, {'name': 'b c'}),
+            (4, 3, {'name': 'c d'}),
+            (0, 5, {'name': 'a b c'}),
+            (2, 5, {'name': 'b c d'}),
+        ]
 

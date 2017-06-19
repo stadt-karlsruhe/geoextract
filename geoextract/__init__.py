@@ -73,9 +73,9 @@ def _split(s):
     string.
     '''
     parts = []
-    pos = None
+    pos = 0
     for m in re.finditer(r'\s+', s):
-        if pos is not None:
+        if m.start() > pos:
             parts.append((pos, s[pos:m.start()]))
         pos = m.end()
     if pos < len(s):
