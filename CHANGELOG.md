@@ -11,6 +11,10 @@ project uses [Semantic Versioning].
 - `geoextract.WindowExtractor` and its subclasses ignored the first word of
   some strings.
 
+### Removed
+
+- `geoextract.PostalExtractor` has been removed.
+
 
 ## [0.2.0] (2017-05-31)
 

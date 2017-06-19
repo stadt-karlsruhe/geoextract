@@ -270,11 +270,6 @@ class PatternExtractor(WindowExtractor):
         Each of these must include named groups. The names of the groups
         are used by ``extract`` to build the result dict.
 
-        If you're also using the ``PostalExtractor`` then it is a good
-        idea to re-use libpostal's field names for your regular
-        expression group names. That way, your validation code will work
-        for results from both extractors.
-
         See ``WindowExtractor`` for the meaning of ``start_len`` and
         ``stop_len``.
         '''
@@ -296,44 +291,6 @@ class PatternExtractor(WindowExtractor):
             if m:
                 yield {k: v for k, v in m.groupdict().iteritems()
                        if v is not None}
-
-
-class PostalExtractor(WindowExtractor):
-    '''
-    Extractor for potential locations using *libpostal*.
-
-    libpostal_ is a statistical address parser that supports many
-    languages. This extractor passes a text in slices of varying length
-    to *libpostal*.
-
-    While this extractor is very versatile it also generates huge
-    amounts of false positives -- because there are so many different
-    address formats, *libpostal* will recognize a potential address in
-    almost anything. Careful validation of the results is therefore
-    especially important.
-
-    This extractor uses sliding windows of varying sizes, see
-    ``WindowExtractor``.
-
-    .. _libpostal: https://github.com/openvenues/libpostal
-    '''
-    def __init__(self, start_len=2, stop_len=7):
-        '''
-        Constructor.
-
-        See the documentation of ``WindowExtractor`` for the meaning
-        of ``start_len`` and ``stop_len``.
-
-        Note: The constructor imports the ``postal.parser`` package
-        (unless that has happened before), which takes quite some time.
-        '''
-        super(PostalExtractor, self).__init__(start_len, stop_len)
-        import postal.parser  # Lazy import because it takes long
-        self._parse_address = postal.parser.parse_address
-
-    def _window_extract(self, window):
-        yield dict((key, value) for (value, key)
-                   in self._parse_address(window))
 
 
 class Pipeline(object):
