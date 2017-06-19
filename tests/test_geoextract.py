@@ -24,6 +24,8 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import re
+
 import mock
 
 from geoextract import *
@@ -129,5 +131,58 @@ class TestWindowExtractor(object):
             (4, 3, {'name': 'c d'}),
             (0, 5, {'name': 'a b c'}),
             (2, 5, {'name': 'b c d'}),
+        ]
+
+
+class TestPatternExtractor(object):
+    '''
+    Test ``geoextract.PatternExtractor``.
+    '''
+    def extract(self, text, patterns, start_len=1, stop_len=4):
+        extractor = PatternExtractor(patterns, start_len, stop_len)
+        return list(extractor.extract(text))
+
+    def test_compiled_regex(self):
+        '''
+        Test using a compiled regex as input.
+        '''
+        assert self.extract('a', [re.compile(r'(?P<a>a)')]) == [
+            (0, 1, {'a': 'a'})
+        ]
+
+    def test_multiple_patterns(self):
+        '''
+        Test passing multiple patterns.
+        '''
+        patterns = [r'(?P<a>^a$)', r'(?P<b>^b$)', r'(?P<c>^c$)']
+        assert self.extract('a b c', patterns) == [
+            (0, 1, {'a': 'a'}),
+            (2, 1, {'b': 'b'}),
+            (4, 1, {'c': 'c'}),
+        ]
+
+    def test_missing_optional_matches(self):
+        '''
+        Test that optional, not matched patterns are ignored.
+        '''
+        assert self.extract('a', [r'(?P<a>a)(?P<b>b)*']) == [
+            (0, 1, {'a': 'a'})
+        ]
+
+    def test_windows(self):
+        '''
+        Test that matching is done using windows.
+        '''
+        assert self.extract('a a a a', [r'(?P<a>[a ]+)']) == [
+            (0, 1, {'a': 'a'}),
+            (2, 1, {'a': 'a'}),
+            (4, 1, {'a': 'a'}),
+            (6, 1, {'a': 'a'}),
+            (0, 3, {'a': 'a a'}),
+            (2, 3, {'a': 'a a'}),
+            (4, 3, {'a': 'a a'}),
+            (0, 5, {'a': 'a a a'}),
+            (2, 5, {'a': 'a a a'}),
+            (0, 7, {'a': 'a a a a'}),
         ]
 
