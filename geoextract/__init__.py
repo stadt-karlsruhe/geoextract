@@ -554,7 +554,7 @@ class BasicNormalizer(Normalizer):
         self.rejoin_lines = rejoin_lines
         self.remove_hyphens = remove_hyphens
         self.remove_specials = remove_specials
-        self.subs = subs
+        self.subs = subs or []
 
     def normalize(self, s):
         '''
@@ -578,7 +578,7 @@ class BasicNormalizer(Normalizer):
             callback = lambda m: self._stemmer.stem(m.group())
             s = re.sub(r'([^\W\d_]|-)+', callback, s, flags=_RE_FLAGS)
         s = re.sub(r'\s+', ' ', s, flags=_RE_FLAGS)
-        return s
+        return s.strip()
 
 
 class Postprocessor(Component):

@@ -242,3 +242,93 @@ class TestNameValidator(object):
             assert v.validate({'name': 'a name', field: 'no-type'})
             assert v.validate({'name': 'a name', field: 'wrong-type'})
 
+
+class TestBasicNormalizer(object):
+    '''
+    Test ``geoextract.BasicNormalizer``.
+    '''
+    def check(self, s, expected, **kwargs):
+        n = BasicNormalizer(**kwargs)
+        assert n.normalize(s) == expected
+
+    def test_stemming(self):
+        '''
+        Test stemming in different languages.
+        '''
+        self.check('streets', 'street', stem='english')
+        self.check('streets', 'streets', stem=False)
+        self.check('orte', 'ort', stem='german')
+        self.check('orte', 'orte', stem=False)
+
+    def test_to_ascii(self):
+        '''
+        Test conversion to ASCII.
+        '''
+        self.check('öüäß', 'ouass', to_ascii=True)
+        self.check('öüäß', 'öüäß', to_ascii=False)
+
+    def test_rejoin_lines(self):
+        '''
+        Test re-joining of lines split by a hyphen.
+        '''
+        for s, joined, not_joined in [
+            ('foo-\nbar', 'foobar', 'foo bar'),
+            ('foo- \nbar', 'foobar', 'foo bar'),
+            ('foo -\nbar', 'foo bar', 'foo bar'),
+            ('foo\n-bar', 'foo bar', 'foo bar'),
+            ('foo\nbar', 'foo bar', 'foo bar'),
+            ('1-\n2', '1-2', '1 2'),
+        ]:
+            self.check(s, joined, rejoin_lines=True)
+            self.check(s, not_joined, rejoin_lines=False)
+
+    def test_remove_hyphens(self):
+        '''
+        Test removal of hyphens.
+        '''
+        for s, removed, not_removed in [
+            ('foo-bar', 'foobar', 'foo bar'),
+            ('f-o-o-b-a-r', 'foobar', 'f o o b a r'),
+            ('1-2', '1-2', '1-2'),
+            ('1-2-3', '1-2-3', '1-2-3'),
+            ('2000-3000', '2000-3000', '2000-3000'),
+        ]:
+            self.check(s, removed, remove_hyphens=True)
+            self.check(s, not_removed, remove_hyphens=False)
+
+    def test_remove_specials(self):
+        '''
+        Test removal of special characters.
+        '''
+        for s, removed in [
+            ('hello?', 'hello'),
+            ('!hello', 'hello'),
+            ('foo!?#bar', 'foo bar'),
+            ('#f!$o?/o+', 'f o o'),
+            ('2.3', '2.3'),
+            ('-2.3', '-2.3'),
+            ('-2.3e-34', '-2.3e-34'),
+            ('1234-', '1234-'),
+            ('1+2', '1+2'),
+            ('+134', '+134'),
+        ]:
+            self.check(s, removed, remove_specials=True)
+            self.check(s, s, remove_specials=False)
+
+    def test_substitutions(self):
+        '''
+        Test substitutions.
+        '''
+        for s, subs, expected in [
+            ('foob', [(r'b\b', 'bar')], 'foobar'),
+            ('ab', [(r'a', 'A'), (r'b', 'B')], 'AB'),
+        ]:
+            self.check(s, expected, subs=subs)
+            self.check(s, s, subs=[])
+
+    def test_whitespace_collapse(self):
+        '''
+        Test collapse of whitespace.
+        '''
+        self.check(' \n \r \t a \n \r \t b \n \r \t ', 'a b')
+
