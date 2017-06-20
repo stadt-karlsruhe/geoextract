@@ -186,3 +186,59 @@ class TestPatternExtractor(object):
             (0, 7, {'a': 'a a a a'}),
         ]
 
+
+class TestNameValidator(object):
+    '''
+    Test ``geoextract.NameValidator``.
+    '''
+    FIELDS = ['street', 'city']
+
+    def create_validator(self, *locations):
+        v = NameValidator()
+        locations = {loc['name']: loc for loc in locations}
+        pipeline = mock.Mock(locations=locations)
+        v.setup(pipeline)
+        return v
+
+    def test_unknown_location(self):
+        '''
+        Test unknown locations.
+        '''
+        v = self.create_validator()
+        for field in self.FIELDS:
+            assert not v.validate({field: 'unknown'})
+
+    def test_known_location_unknown_type(self):
+        '''
+        Test known locations with unknown type.
+        '''
+        v = self.create_validator({'name': 'no-type'})
+        for field in self.FIELDS:
+            assert not v.validate({field: 'no-type'})
+
+    def test_known_location_wrong_type(self):
+        '''
+        Test known locations with a wrong type.
+        '''
+        v = self.create_validator({'name': 'wrong-type', 'type': 'wrong'})
+        for field in self.FIELDS:
+            assert not v.validate({field: 'wrong-type'})
+
+    def test_known_location_correct_type(self):
+        '''
+        Test known locations with a wrong type.
+        '''
+        for field in self.FIELDS:
+            v = self.create_validator({'name': 'correct-type', 'type': field})
+            assert v.validate({field: 'correct-type'})
+
+    def test_named_location(self):
+        '''
+        Test that locations with a name are always accepted.
+        '''
+        v = self.create_validator({'name': 'no-type'},
+                                  {'name': 'wrong-type', 'type': 'wrong'})
+        for field in self.FIELDS:
+            assert v.validate({'name': 'a name', field: 'no-type'})
+            assert v.validate({'name': 'a name', field: 'wrong-type'})
+
