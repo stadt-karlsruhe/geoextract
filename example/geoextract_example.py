@@ -87,7 +87,8 @@ locations = [
 # normalization (e.g. stemming) and content normalization (e.g. synonym
 # handling).
 
-normalizer = geoextract.Normalizer(subs=[(r'str\b', 'strasse')], stem='german')
+normalizer = geoextract.BasicNormalizer(subs=[(r'str\b', 'strasse')],
+                                        stem='german')
 
 
 #

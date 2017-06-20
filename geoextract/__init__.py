@@ -38,8 +38,10 @@ import re
 import ahocorasick
 from nltk.stem.snowball import SnowballStemmer
 from unidecode import unidecode
+import numpy as np
+from scipy.ndimage.measurements import find_objects, label
+from scipy.ndimage.morphology import binary_dilation
 
-from .splitters import WhitespaceSplitter
 from .app import create_app
 
 
@@ -105,7 +107,25 @@ def _unique_locations(locations):
     return unique_locations
 
 
-class Extractor(object):
+class Component(object):
+    '''
+    Base class for pipeline components.
+
+    Components hook into different stages of the extraction process.
+    '''
+    def setup(self, pipeline):
+        '''
+        Set up component.
+
+        This function is called once by the pipeline to which the
+        component has been attached. Subclasses can implement this
+        method to get information from the pipeline which they require
+        for their work (for example the list of known locations).
+        '''
+        pass
+
+
+class Extractor(Component):
     '''
     Base class for extractors.
     '''
@@ -300,10 +320,28 @@ class Pipeline(object):
     '''
     def __init__(self, locations, extractors=None, validator=None,
                  normalizer=None, splitter=None, postprocessors=None):
+        '''
+        Constructor.
+
+        ``locations`` is a list of location dicts. Each location must
+        have at least a ``name`` key.
+
+        ``extractors`` is a list of instances of ``Extractor`` and
+        defaults to a single ``NameExtractor``.
+
+        ``validator`` is an instance of ``Validator`` and defaults to
+        an instance of ``NameValidator``.
+
+        ``splitter`` is an instance of ``Splitter`` and defaults to an
+        instance of ``WhitespaceSplitter``.
+
+        ``postprocessors`` is a list of instances of ``Postprocessor``
+        and defaults to an empty list.
+        '''
         self.locations = {loc['name'] : loc for loc in locations}
         self.extractors = extractors or [NameExtractor()]
         self.validator = validator or NameValidator()
-        self.normalizer = normalizer or Normalizer()
+        self.normalizer = normalizer or BasicNormalizer()
         self.splitter = splitter or WhitespaceSplitter()
         self.postprocessors = postprocessors or []
         self._normalize_locations()
@@ -413,7 +451,25 @@ class Pipeline(object):
         return create_app(self)
 
 
-class NameValidator(object):
+class Validator(Component):
+    '''
+    Base class for validators.
+    '''
+    def validate(self, location):
+        '''
+        Validate a location.
+
+        Called by the associated pipeline during the validation stage.
+
+        ``location`` is a location dict.
+
+        This function must be implemented by subclasses and must return
+        ``True`` if ``location`` is valid and ``False`` otherwise.
+        '''
+        raise NotImplementedError('Must be implemented in subclasses.')
+
+
+class NameValidator(Validator):
     '''
     A simple validator that ensures that location names are known.
 
@@ -437,8 +493,8 @@ class NameValidator(object):
             except KeyError:
                 continue
             try:
-                if not self.locations[value]['type'] == key:
-                    # Known name, but wrong type
+                if not self.locations[value].get('type') == key:
+                    # Known name, but wrong or missing type
                     return False
             except KeyError:
                 # Unknown name
@@ -446,7 +502,23 @@ class NameValidator(object):
         return True
 
 
-class Normalizer(object):
+class Normalizer(Component):
+    '''
+    Base class for string normalizers.
+    '''
+    def normalize(self, s):
+        '''
+        Normalize a string.
+
+        ``s`` is the string to be normalized.
+
+        Must be implemented by subclasses to return the normalized
+        string.
+        '''
+        raise NotImplementedError('Must be implemented by subclasses.')
+
+
+class BasicNormalizer(Normalizer):
     '''
     A versatile string normalizer.
     '''
@@ -509,7 +581,23 @@ class Normalizer(object):
         return s
 
 
-class KeyFilterPostprocessor(object):
+class Postprocessor(Component):
+    '''
+    Base class for postprocessors.
+    '''
+    def postprocess(self, location):
+        '''
+        Postprocess a validated location.
+
+        ``location`` is a location dict.
+
+        Subclasses must implement this method so that it returns a
+        postprocessed copy of the input dict.
+        '''
+        raise NotImplementedError('Must be implemented in subclasses.')
+
+
+class KeyFilterPostprocessor(Postprocessor):
     '''
     Simple postprocessor that filters a location's keys.
     '''
@@ -525,4 +613,105 @@ class KeyFilterPostprocessor(object):
     def postprocess(self, location):
         return {key: value for key, value in location.iteritems()
                 if key in self.keys}
+
+
+class Splitter(Component):
+    '''
+    Base class for text splitters.
+
+    Splitters take a text and split it into multiple chunks, each of
+    which is handled separately during location extraction.
+    '''
+    def split(self, text):
+        '''
+        Split a text into chunks.
+
+        ``text`` is a string with the original (not normalized) text.
+
+        Subclasses must implement this method so that it returns a list
+        of strings (the chunks).
+        '''
+        raise NotImplementedError('Must be implemented in subclasses.')
+
+
+def _string_to_array(s):
+    '''
+    Convert a string to a NumPy array.
+
+    Returns a 2D NumPy array where array rows correspond to lines in the
+    string. Shorter lines are padded with zeros to get a rectangular
+    shape.
+    '''
+    lines = s.splitlines()
+    if not lines:
+        return np.empty((0, 0))
+    m = len(lines)
+    n = max(len(line) for line in lines)
+    a = np.zeros((m, n), dtype=np.int32)
+    for i, line in enumerate(lines):
+        for j, char in enumerate(line):
+            a[i, j] = ord(char)
+    return a
+
+
+class WhitespaceSplitter(Splitter):
+    '''
+    Splits a string into connected parts of non-whitespace.
+
+    Two characters in ``text`` belong to the same parts if they aren't
+    separated by a space (either vertically or horizontally). By
+    default, parts are separated horizontally by two spaces and
+    vertically by a single space. Hence, the following image shows 6
+    components (where ``.`` represents a space)::
+
+        a.b..c
+        a.b..c
+        ......
+        d.e..f
+        ......
+        ......
+        g.h..i
+
+    You change the number of spaces required to separate parts
+    vertically and horizontally via the constructor's ``margin``
+    parameter. For example, for ``margin=(1, 1)`` the image above yields
+    9 parts, because the previously connected ``a``/``b`` and ``d`/``e``
+    parts are not connected anymore. Similarly, ``margin=(2, 2)`` yields
+    4 parts and``margin=(3, 3)`` yields a single part for the whole
+    text.
+    '''
+    def __init__(self, margin=(2, 1)):
+        '''
+        Constructor.
+
+        ``margin`` is a pair of integers which determine how many spaces
+        are required to separate parts horizontally and vertically.
+        '''
+        self.margin = margin
+
+    def split(self, text):
+        a = _string_to_array(text)
+        if not a.size:
+            return []
+        b = np.copy(a)
+        b[b == ord(' ')] = 0
+        if self.margin != (1, 1):
+            # Dilate the image
+            structure = np.zeros((2 * (self.margin[1] - 1) + 1,
+                                  2 * (self.margin[0] - 1) + 1))
+            structure[self.margin[1] - 1:, self.margin[0] - 1:] = 1
+            labels = binary_dilation(b, structure=structure).astype(b.dtype)
+        else:
+            labels = b
+        num = label(labels, structure=np.ones((3, 3)), output=labels)
+        objects = find_objects(labels)
+        parts = []
+        for i, obj in enumerate(objects):
+            mask = labels[obj] != i + 1
+            region = np.copy(a[obj])
+            region[mask] = ord(' ')
+            part = '\n'.join(''.join(unichr(c or ord(' ')) for c in row)
+                             for row in region.tolist())
+            parts.append(part)
+        return parts
 

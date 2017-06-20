@@ -6,10 +6,24 @@ project uses [Semantic Versioning].
 
 ## [Unreleased]
 
+
 ### Changed
 
 - The constructor of `geoextract.PatternExtractor` now accepts raw (not
   compiled) regex strings.
+- All definitions from the ``geoextract.splitters`` module have been moved to
+  the ``geoextract`` module.
+- The old ``Normalizer`` class has been renamed to ``BasicNormalizer``.
+  ``Normalizer`` is now an abstract base class from which ``BasicNormalizer``
+  derives.
+- `KeyFilterPostprocessor` now derives from the new abstract base class
+  `Postprocessor`.
+- `WhitespaceSplitter` now derives from the new abstract base class
+  `Splitter`
+- All abstract base classes for pipeline components (`Splitter`, `Normalizer`,
+  `Extractor`, `Validator`, `Postprocessor`) now derive from a common abstract
+  base class `Component`.
+
 
 ### Fixed
 
@@ -33,7 +47,7 @@ project uses [Semantic Versioning].
 
 - `geoextract.Normalizer` is a versatile string normalizer.
 
-- `geoextract.KeyFilterPostProcessor` is a simple postprocessor that only keeps
+- `geoextract.KeyFilterPostprocessor` is a simple postprocessor that only keeps
 
 ### Changed
 
