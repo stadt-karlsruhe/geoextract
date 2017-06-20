@@ -3,6 +3,7 @@
 /build/
 /.cache/
 /README.html
+/.coverage
 
 *.egg-info/
 
