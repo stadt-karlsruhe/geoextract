@@ -352,3 +352,209 @@ class TestKeyFilterPostprocessor(object):
         ]:
             assert kfp.postprocess(location) == expected
 
+
+def debug_string(s):
+    if not s:
+        return '<empty>'
+    parts = []
+    for c in s:
+        if c == ' ':
+            parts.append('.')
+        elif c == '\t':
+            parts.append('#')
+        elif c == '\n':
+            parts.append('\\\n')
+        else:
+            parts.append(c)
+    return ''.join(parts)
+
+
+def deline(s):
+    '''
+    Remove empty leading and trailing lines.
+    '''
+    lines = s.splitlines()
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return '\n'.join(lines)
+
+
+def _dedent(lines, start, direction):
+    current = start
+    try:
+        while True:
+            candidate = lines[0][current]
+            if candidate not in [' ', '\t']:
+                return current
+            for line in lines[1:]:
+                if line[current] != candidate:
+                    return current
+            else:
+                current += direction
+    except IndexError:
+        return current
+
+
+def double_dedent(s):
+    '''
+    Strip common leading and trailing whitespace from lines of a string.
+    '''
+    lines = s.splitlines()
+    prefix = _dedent(lines, 0, 1)
+    postfix = _dedent(lines, -1, -1)
+    print((prefix, postfix))
+    if postfix < -1:
+        return '\n'.join(line[prefix:postfix + 1] for line in lines)
+    else:
+        return '\n'.join(line[prefix:] for line in lines)
+
+
+class TestWhitespaceSplitter(object):
+    '''
+    Test ``geoextract.WhitespaceSplitter``.
+    '''
+    def check(self, s, expected, margin=None):
+        kwargs = {}
+        if margin:
+            kwargs['margin'] = margin
+        splitter = WhitespaceSplitter(**kwargs)
+        result = sorted(double_dedent(deline(chunk))
+                        for chunk in splitter.split(s))
+        expected = [double_dedent(deline(e)) for e in expected]
+        try:
+            assert result == expected
+        except AssertionError:
+            print('Result:\n')
+            for r in result:
+                print('{}\n'.format(debug_string(r)))
+            print('\nExpected:\n')
+            for e in expected:
+                print('{}\n'.format(debug_string(e)))
+            raise
+
+    def test_padding(self):
+        '''
+        Test rectangular padding of chunks.
+        '''
+        self.check('''
+            xxx   y
+            x     y
+            x   yyyyy
+            x     y
+            xxx   y
+        ''', [
+            '''
+              y  
+              y  
+            yyyyy
+              y  
+              y  
+            ''',
+            '''
+            xxx
+            x  
+            x  
+            x  
+            xxx
+            '''
+        ], margin=(1, 1))
+
+    def test_overlapping(self):
+        '''
+        Test overlapping chunks.
+        '''
+        self.check('''
+            x yyyyyyyy
+            x y      y
+            x y xxxx y
+            x y    x y
+            x yyyy x y
+            x      x y
+            xxxxxxxx y
+        ''', [
+            '''
+            x       
+            x       
+            x   xxxx
+            x      x
+            x      x
+            x      x
+            xxxxxxxx
+            ''',
+            '''
+            yyyyyyyy
+            y      y
+            y      y
+            y      y
+            yyyy   y
+                   y
+                   y
+            '''
+
+        ], margin=(1, 1))
+
+    def test_margins(self):
+        '''
+        Test different margins.
+        '''
+        s = '''
+            aaa bb  c
+
+            eee ff  g
+
+
+            iii jj  k
+        '''
+        for margin, expected in [
+            (
+                (1, 1),
+                ['aaa', 'bb', 'c', 'eee', 'ff', 'g', 'iii', 'jj', 'k']
+            ),
+            (
+                (2, 1),
+                ['aaa bb', 'c', 'eee ff', 'g', 'iii jj', 'k']
+            ),
+            (
+                (3, 1),
+                ['aaa bb  c', 'eee ff  g', 'iii jj  k']
+            ),
+            (
+                (1, 2),
+                ['aaa\n   \neee', 'bb\n  \nff', 'c\n \ng', 'iii', 'jj', 'k']
+            ),
+            (
+                (1, 3),
+                ['aaa\n   \neee\n   \n   \niii', 'bb\n  \nff\n  \n  \njj',
+                 'c\n \ng\n \n \nk']
+            ),
+            (
+                (2, 2),
+                ['aaa bb\n      \neee ff', 'c\n \ng', 'iii jj', 'k']
+            ),
+            (
+                (2, 3),
+                ['aaa bb\n      \neee ff\n      \n      \niii jj',
+                 'c\n \ng\n \n \nk']
+            ),
+            (
+                (3, 3),
+                ['aaa bb  c\n         \neee ff  g\n         \n         \niii jj  k']
+            ),
+        ]:
+            self.check(s, expected, margin)
+
+    def test_empty(self):
+        '''
+        Test empty string as input argument.
+        '''
+        self.check('', [])
+
+    def test_only_whitespace(self):
+        '''
+        Test whitespace-only inputs.
+        '''
+        for s in [' ', '\t', '\n', ' \t \n \n\t\n   \n']:
+            self.check(s, [])
+

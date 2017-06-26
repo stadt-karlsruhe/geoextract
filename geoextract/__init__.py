@@ -712,6 +712,7 @@ class WhitespaceSplitter(Splitter):
             region[mask] = ord(' ')
             part = '\n'.join(''.join(unichr(c or ord(' ')) for c in row)
                              for row in region.tolist())
-            parts.append(part)
+            if part.strip():
+                parts.append(part)
         return parts
 
