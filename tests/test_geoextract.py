@@ -332,3 +332,23 @@ class TestBasicNormalizer(object):
         '''
         self.check(' \n \r \t a \n \r \t b \n \r \t ', 'a b')
 
+
+class TestKeyFilterPostprocessor(object):
+    '''
+    Test ``geoextract.KeyFilterPostprocessor``.
+    '''
+    def test_postprocess(self):
+        kfp = KeyFilterPostprocessor(['a', 'b'])
+        for location, expected in [
+            ({}, {}),
+            ({'c': 1}, {}),
+            ({'c': 1, 'd': 2}, {}),
+            ({'a': 1}, {'a': 1}),
+            ({'b': 1}, {'b': 1}),
+            ({'a': 1, 'b': 2}, {'a': 1, 'b': 2}),
+            ({'a': 1, 'c': 2}, {'a': 1}),
+            ({'b': 1, 'c': 2}, {'b': 1}),
+            ({'a': 1, 'b': 2, 'c': 3}, {'a': 1, 'b': 2}),
+        ]:
+            assert kfp.postprocess(location) == expected
+
