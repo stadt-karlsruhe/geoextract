@@ -25,6 +25,8 @@ project uses [Semantic Versioning].
   base class `Component`.
 - `BasicNormalizer.normalize` now removes leading and trailing whitespace at
   the end of the normalization process.
+- Normalization, splitting and validation can now be completely disabled by
+  passing `False` for the corresponding argument of the `Pipeline` constructor.
 
 ### Fixed
 

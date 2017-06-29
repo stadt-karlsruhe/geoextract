@@ -314,9 +314,30 @@ class PatternExtractor(WindowExtractor):
                        if v is not None}
 
 
+def _default(x, callback):
+    '''
+    If ``x`` is ``None`` return ``callback()``, if ``x`` is false return
+    ``None``, otherwise return ``x``.
+    '''
+    if x is None:
+        return callback()
+    if not x:
+        return None
+    return x
+
+
 class Pipeline(object):
     '''
     A geoextraction pipeline.
+
+    A pipeline's ``locations`` attribute is a dict which maps a
+    location's canonical name to its location dict. Note that this is
+    different from the list format expected by the constructor from
+    which it is automatically converted into the dict format described
+    here.
+
+    The ``normalized_names`` attribute is a dict which maps
+    normalized names and aliases to their location dicts.
     '''
     def __init__(self, locations, extractors=None, validator=None,
                  normalizer=None, splitter=None, postprocessors=None):
@@ -327,22 +348,29 @@ class Pipeline(object):
         have at least a ``name`` key.
 
         ``extractors`` is a list of instances of ``Extractor`` and
-        defaults to a single ``NameExtractor``.
+        defaults to a single ``NameExtractor``. The list must contain at
+        least one item.
 
         ``validator`` is an instance of ``Validator`` and defaults to
-        an instance of ``NameValidator``.
+        an instance of ``NameValidator``. You can disable validation
+        completely by passing ``False``.
+
+        ``normalizer`` is an instance of ``Normalizer`` and defaults to
+        an instance of ``BasicNormalizer``. You can disable
+        normalization completely by passing ``False``.
 
         ``splitter`` is an instance of ``Splitter`` and defaults to an
-        instance of ``WhitespaceSplitter``.
+        instance of ``WhitespaceSplitter``. You can disable splitting
+        completely by passing ``False``.
 
         ``postprocessors`` is a list of instances of ``Postprocessor``
         and defaults to an empty list.
         '''
         self.locations = {loc['name'] : loc for loc in locations}
         self.extractors = extractors or [NameExtractor()]
-        self.validator = validator or NameValidator()
-        self.normalizer = normalizer or BasicNormalizer()
-        self.splitter = splitter or WhitespaceSplitter()
+        self.validator = _default(validator, NameValidator)
+        self.normalizer = _default(normalizer, BasicNormalizer)
+        self.splitter = _default(splitter, WhitespaceSplitter)
         self.postprocessors = postprocessors or []
         self._normalize_locations()
         self._setup_components()
@@ -357,16 +385,24 @@ class Pipeline(object):
         for component in [self.normalizer, self.splitter, self.validator]:
             setup_component(component)
 
+    def _normalize(self, s):
+        '''
+        Normalize a string.
+        '''
+        if self.normalizer:
+            return self.normalizer.normalize(s)
+        return s
+
     def _normalize_locations(self):
         '''
         Create a map with normalized location names.
         '''
         self.normalized_names = {}
         for location in self.locations.itervalues():
-            normalized_name = self.normalizer.normalize(location['name'])
+            normalized_name = self._normalize(location['name'])
             self.normalized_names[normalized_name] = location
             for alias in location.get('aliases', []):
-                normalized_alias = self.normalizer.normalize(alias)
+                normalized_alias = self._normalize(alias)
                 self.normalized_names[normalized_alias] = location
 
     def _augment_result(self, result):
@@ -385,11 +421,19 @@ class Pipeline(object):
         except KeyError:
             pass
 
+    def _split(self, text):
+        '''
+        Split a text into chunks.
+        '''
+        if self.splitter:
+            return self.splitter.split(text)
+        return [text]
+
     def extract(self, text):
         '''
         Extract locations from a text.
         '''
-        parts = map(self.normalizer.normalize, self.splitter.split(text))
+        parts = map(self._normalize, self._split(text))
         results = []
         for part in parts:
             candidates = []
@@ -592,7 +636,9 @@ class Postprocessor(Component):
         ``location`` is a location dict.
 
         Subclasses must implement this method so that it returns a
-        postprocessed copy of the input dict.
+        postprocessed copy of the input dict. Locations for which a
+        false value is returned are discarded (however, a better place
+        to do that is usually during validation).
         '''
         raise NotImplementedError('Must be implemented in subclasses.')
 

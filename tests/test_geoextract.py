@@ -558,3 +558,265 @@ class TestWhitespaceSplitter(object):
         for s in [' ', '\t', '\n', ' \t \n \n\t\n   \n']:
             self.check(s, [])
 
+
+class UpperNormalizer(Normalizer):
+    def normalize(self, s):
+        return s.upper()
+
+
+location1 = {'name': 'foo'}
+location2 = {'name': 'bar', 'aliases': ['bazinga']}
+
+
+class FakeExtractor(Extractor):
+    def __init__(self, results):
+        self.results = results
+
+    def extract(self, s):
+        for result in self.results:
+            yield result
+
+
+def subsets(items):
+    '''
+    Returns a list of all subsets of an iterable.
+    '''
+    subsets = [[]]
+    for item in items:
+        subsets += [subset + [item] for subset in subsets]
+    return subsets
+
+
+class TestPipeline(object):
+    '''
+    Test ``geoextract.Pipeline``.
+    '''
+    def test_component_setup(self):
+        '''
+        Test that components are setup correctly.
+        '''
+        normalizer = mock.Mock()
+        extractor1 = mock.Mock()
+        extractor2 = mock.Mock()
+        validator = mock.Mock()
+        splitter = mock.Mock()
+        postprocessor1 = mock.Mock()
+        postprocessor2 = mock.Mock()
+        Pipeline([], extractors=[extractor1, extractor2], validator=validator,
+                 normalizer=normalizer, splitter=splitter,
+                 postprocessors=[postprocessor1, postprocessor2])
+        assert normalizer.setup.called
+        assert extractor1.setup.called
+        assert extractor2.setup.called
+        assert validator.setup.called
+        assert splitter.setup.called
+        assert postprocessor1.setup.called
+        assert postprocessor2.setup.called
+
+    def test_locations(self):
+        '''
+        Test that locations are correctly converted to a dict.
+        '''
+        pipeline = Pipeline([location1, location2])
+        locations = pipeline.locations
+        assert locations['foo'] is location1
+        assert locations['bar'] is location2
+        assert len(locations) == 2
+
+    def test_normalized_names(self):
+        '''
+        Test that location names are correctly normalized.
+        '''
+        pipeline = Pipeline([location1, location2],
+                             normalizer=UpperNormalizer())
+        names = pipeline.normalized_names
+        assert names['FOO'] is location1
+        assert names['BAR'] is location2
+        assert names['BAZINGA'] is location2
+        assert len(names) == 3
+
+    def test_normalized_extractor_input(self):
+        '''
+        Test that extractor input is normalized.
+        '''
+        extractor = mock.Mock()
+        extractor.extract = mock.Mock()
+        extractor.extract.return_value = []
+        pipeline = Pipeline([], extractors=[extractor], normalizer=UpperNormalizer())
+        pipeline.extract('foo')
+        extractor.extract.assert_called_once_with('FOO')
+
+    def test_no_normalizer(self):
+        '''
+        Test disabled normalization.
+        '''
+        extractor = mock.Mock()
+        extractor.extract = mock.Mock()
+        extractor.extract.return_value = [(0, 1, {'name': 'A  B'})]
+        pipeline = Pipeline([{'name': 'A  B'}], extractors=[extractor],
+                            normalizer=False)
+        results = pipeline.extract('NO_NORMALIZATION--')
+        extractor.extract.assert_called_once_with('NO_NORMALIZATION--')
+        assert results == [{'name': 'A  B'}]
+
+    def test_name_denormalization(self):
+        '''
+        Test that names in results are denormalized.
+        '''
+        locations = [
+            {'name': 'a-street'},
+            {'name': 'a-city'},
+            {'name': 'a-name'},
+        ]
+        normalizer = UpperNormalizer()
+        result = (0, 0, {'name': 'A-NAME', 'street': 'A-STREET',
+                  'city': 'A-CITY'})
+        pipeline = Pipeline(locations, normalizer=normalizer,
+                            extractors=[FakeExtractor([result])])
+        extracted = pipeline.extract('does not matter')
+        assert extracted[0]['name'] == 'a-name'
+        assert extracted[0]['street'] == 'a-street'
+        assert extracted[0]['city'] == 'a-city'
+
+    def test_extractors(self):
+        '''
+        Test that extractors are called correctly.
+        '''
+        extractor1 = FakeExtractor([(0, 1, {'name': 'foo'})])
+        extractor2 = FakeExtractor([(1, 1, {'name': 'bar'})])
+        pipeline = Pipeline([], extractors=[extractor1, extractor2])
+        results = pipeline.extract('does not matter')
+        assert sorted(r['name'] for r in results) == ['bar', 'foo']
+
+    def test_pruning_of_overlapping_results(self):
+        '''
+        Test that overlapping results are pruned.
+        '''
+        # a
+        #  bb
+        #   c
+        #   ddd
+        #  eeee
+        #      ff
+        #     gg
+        extractor = FakeExtractor([
+            (0, 1, {'name': 'a'}),
+            (1, 2, {'name': 'b'}),
+            (2, 1, {'name': 'c'}),
+            (2, 3, {'name': 'd'}),
+            (1, 4, {'name': 'e'}),
+            (5, 2, {'name': 'f'}),
+            (4, 2, {'name': 'g'}),
+        ])
+        pipeline = Pipeline([], extractors=[extractor])
+        results = pipeline.extract('does not matter')
+        assert sorted(r['name'] for r in results) == ['a', 'e', 'f', 'g']
+
+    def test_duplicate_removal(self):
+        '''
+        Test removal of duplicate results.
+        '''
+        keys = ['street', 'house_number', 'postcode', 'city']
+        for subkeys in subsets(keys):
+            subkeys.append('name')
+            loc1 = {subkey: subkey for subkey in subkeys}
+            loc2 = loc1.copy()  # Equal to loc1
+            loc3 = loc1.copy()
+            loc3['foo'] = 'bar'  # Equal to loc1 because other keys are ignored
+            loc4 = loc1.copy()
+            loc4[subkeys[0]] = 'x' # Not equal
+            extractor = FakeExtractor([
+                (0, 1, loc1),
+                (1, 1, loc2),
+                (2, 1, loc3),
+                (3, 1, loc4),
+            ])
+            pipeline = Pipeline([], extractors=[extractor])
+            results = pipeline.extract('does not matter')
+            assert sorted(results) == sorted([loc1, loc4])
+
+    def test_validation(self):
+        '''
+        Test validation of results.
+        '''
+        class MockValidator(Validator):
+            def validate(self, location):
+                return location['name'] == 'a'
+
+        extractor = FakeExtractor([
+            (0, 1, {'name': 'a'}),
+            (1, 1, {'name': 'b'}),
+        ])
+        pipeline = Pipeline([], extractors=[extractor],
+                            validator=MockValidator())
+        results = pipeline.extract('does not matter')
+        assert len(results) == 1
+        assert results[0]['name'] == 'a'
+
+    def test_no_validation(self):
+        '''
+        Test disabled validation.
+        '''
+        extractor = FakeExtractor([(0, 1, {'name': 'a'})])
+        pipeline = Pipeline([], extractors=[extractor], validator=False)
+        assert pipeline.extract('does not matter') == [{'name': 'a'}]
+
+    def test_postprocessing(self):
+        '''
+        Test postprocessing of results.
+        '''
+        class MockPostprocessor(Postprocessor):
+            def postprocess(self, location):
+                if location['name'] == 'a':
+                    location['foo'] = 'bar'
+                    return location
+                else:
+                    return False
+
+        extractor = FakeExtractor([
+            (0, 1, {'name': 'a'}),
+            (1, 1, {'name': 'b'}),
+        ])
+        pipeline = Pipeline([], extractors=[extractor],
+                            postprocessors=[MockPostprocessor()])
+        results = pipeline.extract('does not matter')
+        assert len(results) == 1
+        assert results[0] == {'name': 'a', 'foo': 'bar'}
+
+    def test_splitting(self):
+        '''
+        Test splitting of documents.
+        '''
+        class MockSplitter(Splitter):
+            def split(self, s):
+                return s
+
+        extractor = mock.Mock()
+        extractor.extract = mock.Mock()
+        extractor.extract.return_value = []
+        pipeline = Pipeline([], extractors=[extractor],
+                            splitter=MockSplitter())
+        pipeline.extract('foo')
+        extractor.extract.assert_has_calls(
+            [mock.call('f'), mock.call('o'), mock.call('o')]
+        )
+
+    def test_no_splitting(self):
+        '''
+        Test disabled splitting.
+        '''
+        extractor = mock.Mock()
+        extractor.extract = mock.Mock()
+        extractor.extract.return_value = []
+        pipeline = Pipeline([], extractors=[extractor], splitter=False)
+        pipeline.extract('white   space')
+        extractor.extract.assert_called_once_with('white space')
+
+    def test_app_creation(self):
+        '''
+        Test creating a web app from a pipeline.
+        '''
+        pipeline = Pipeline([])
+        app = pipeline.create_app()
+        assert hasattr(app, 'run')
+
