@@ -32,6 +32,8 @@ framework on which you can build a solution for your use case.
 
 ## Installation
 
+GeoExtract runs on Python 2.7 and 3.4 or later.
+
 GeoExtract relies on [NumPy][numpy] and [SciPy][scipy], which are cumbersome
 to install from source. We therefore suggest to use your system's package
 manager to install them via pre-built packages. For example, on Ubuntu you
