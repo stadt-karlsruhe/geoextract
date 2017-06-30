@@ -3,3 +3,4 @@ mock>=2.0.0
 requests>=2.9.1
 beautifulsoup4>=4.4.1
 pytest-timeout>=1.2.0
+pytest-cov>=2.5.1
