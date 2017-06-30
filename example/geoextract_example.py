@@ -178,7 +178,7 @@ pipeline = geoextract.Pipeline(
 
 if __name__ == '__main__':
     import io
-    from pprint import pprint
+    import json
     import sys
 
     if len(sys.argv) == 1:
@@ -190,5 +190,5 @@ if __name__ == '__main__':
         with io.open(filename, 'r', encoding='utf-8') as f:
             text = f.read()
         locations = pipeline.extract(text)
-        pprint(sorted(locations))
+        print(json.dumps(sorted(locations), indent=4, sort_keys=True))
 
