@@ -25,6 +25,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import errno
+import json
 import os
 import threading
 import signal
@@ -92,4 +93,11 @@ def stop_process(pid, delay=None):
             raise
         if wait_for_process(pid, delay):
             break
+
+
+def sort_as_json(values):
+    '''
+    Sort a list of values according to their JSON representation.
+    '''
+    return sorted(values, key=json.dumps)
 

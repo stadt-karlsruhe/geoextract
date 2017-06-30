@@ -190,5 +190,5 @@ if __name__ == '__main__':
         with io.open(filename, 'r', encoding='utf-8') as f:
             text = f.read()
         locations = pipeline.extract(text)
-        print(json.dumps(sorted(locations), indent=4, sort_keys=True))
+        print(json.dumps(locations, indent=4, sort_keys=True))
 

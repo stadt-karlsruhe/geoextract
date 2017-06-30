@@ -30,6 +30,8 @@ import mock
 
 from geoextract import *
 
+from . import sort_as_json
+
 
 class TestNameExtractor(object):
     '''
@@ -733,7 +735,7 @@ class TestPipeline(object):
             ])
             pipeline = Pipeline([], extractors=[extractor])
             results = pipeline.extract('does not matter')
-            assert sorted(results) == sorted([loc1, loc4])
+            assert sort_as_json(results) == sort_as_json([loc1, loc4])
 
     def test_validation(self):
         '''

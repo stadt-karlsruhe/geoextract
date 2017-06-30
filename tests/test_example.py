@@ -28,10 +28,11 @@ import io
 import json
 import os.path
 import subprocess
+import sys
 
 import requests
 
-from . import wait_for_server, stop_process
+from . import wait_for_server, stop_process, sort_as_json
 
 
 EXAMPLE_DIR = os.path.join(os.path.dirname(__file__), '..', 'example')
@@ -104,8 +105,10 @@ def test_example_with_file():
     Test that running the example with input from a file works.
     '''
     output = subprocess.check_output(['python', EXAMPLE_SCRIPT, EXAMPLE_INPUT])
+    if isinstance(output, bytes):
+        output = output.decode(sys.stdout.encoding)
     data = json.loads(output)
-    assert data == EXAMPLE_DATA
+    assert sort_as_json(data) == sort_as_json(EXAMPLE_DATA)
 
 
 def make_extract_api_request(url, text):
@@ -128,7 +131,7 @@ def test_example_as_app():
         with io.open(EXAMPLE_INPUT, encoding='utf-8') as f:
             text = f.read()
         extracted = make_extract_api_request(EXAMPLE_URL, text)
-        assert sorted(extracted) == sorted(EXAMPLE_DATA)
+        assert sort_as_json(extracted) == sort_as_json(EXAMPLE_DATA)
     finally:
         stop_process(process.pid, delay=10)
 

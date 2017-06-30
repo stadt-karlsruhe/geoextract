@@ -41,6 +41,7 @@ from unidecode import unidecode
 import numpy as np
 from scipy.ndimage.measurements import find_objects, label
 from scipy.ndimage.morphology import binary_dilation
+from six import iteritems, itervalues, PY2, unichr
 
 from .app import create_app
 
@@ -165,6 +166,12 @@ class NameExtractor(Extractor):
         '''
         self._automaton = None  # Initialized by ``setup``
 
+    def _pad(self, text):
+        text = ' ' + text + ' '
+        if PY2:
+            text = text.encode('utf-8')
+        return text
+
     def setup(self, pipeline):
         # Build an Aho-Corasick automaton for fast name search.
         # Unfortunately, the `ahocorasick` module currently doesn't
@@ -176,17 +183,20 @@ class NameExtractor(Extractor):
         self._automaton = ahocorasick.Automaton()
         for name in pipeline.normalized_names:
             name = name.strip()
-            b = (' ' + name + ' ').encode('utf-8')
-            self._automaton.add_word(b, name)
+            self._automaton.add_word(self._pad(name), name)
         self._automaton.make_automaton()
 
     def extract(self, text):
-        # Pad with spaces and encode, see __init__
-        b = (' ' + text + ' ').encode('utf-8')
-        for end_index, name in self._automaton.iter(b):
-            end_index -= 1  # Because of space-padding of key
-            end_index = len(b[1:end_index + 1].decode('utf-8')) - 1
-            length = len(name)  # ``name`` is the original Unicode name
+        text = self._pad(text)
+        for end_index, name in self._automaton.iter(text):
+            end_index -= 1  # Trailing padding space
+            if PY2:
+                # UTF-8 encoded text might require more characters than the
+                # original, which messes up the indices. So we compute the
+                # length of the decoded text up to the end of the match.
+                end_index = len(text[1:end_index + 1].decode('utf-8'))
+            end_index -= 1  # Leading padding space
+            length = len(name)  # ``name`` is always Unicode
             yield (end_index - length + 1, length, {'name': name})
 
 
@@ -310,7 +320,7 @@ class PatternExtractor(WindowExtractor):
         for pattern in self.patterns:
             m = pattern.search(window)
             if m:
-                yield {k: v for k, v in m.groupdict().iteritems()
+                yield {k: v for k, v in iteritems(m.groupdict())
                        if v is not None}
 
 
@@ -398,7 +408,7 @@ class Pipeline(object):
         Create a map with normalized location names.
         '''
         self.normalized_names = {}
-        for location in self.locations.itervalues():
+        for location in itervalues(self.locations):
             normalized_name = self._normalize(location['name'])
             self.normalized_names[normalized_name] = location
             for alias in location.get('aliases', []):
@@ -657,7 +667,7 @@ class KeyFilterPostprocessor(Postprocessor):
         self.keys = set(keys)
 
     def postprocess(self, location):
-        return {key: value for key, value in location.iteritems()
+        return {key: value for key, value in iteritems(location)
                 if key in self.keys}
 
 

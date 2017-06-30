@@ -4,3 +4,4 @@ scipy>=0.17.0
 unidecode>=0.4.21
 nltk>=3.2.2
 Flask>=0.12.1
+six>=1.10.0
