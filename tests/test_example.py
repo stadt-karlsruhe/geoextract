@@ -27,12 +27,11 @@ from __future__ import (absolute_import, division, print_function,
 import io
 import json
 import os.path
-import signal
 import subprocess
-import threading
-import time
 
 import requests
+
+from . import wait_for_server, stop_process
 
 
 EXAMPLE_DIR = os.path.join(os.path.dirname(__file__), '..', 'example')
@@ -109,28 +108,6 @@ def test_example_with_file():
     assert data == EXAMPLE_DATA
 
 
-class ExampleAppThread(threading.Thread):
-    '''
-    Thread for running the example app.
-    '''
-    def __init__(self):
-        super(ExampleAppThread, self).__init__()
-        self.process = None
-
-    def run(self):
-        self.process = subprocess.Popen(['python', EXAMPLE_SCRIPT])
-        pid = self.process.pid
-        return_code = self.process.wait()
-        self.process = None
-
-    def stop(self):
-        if not self.process:
-            raise RuntimeError('Server process is not running.')
-        # Note: This only works if Flask's auto-reloader isn't active
-        # See https://github.com/pallets/werkzeug/issues/58
-        self.process.send_signal(signal.SIGINT)
-
-
 def make_extract_api_request(url, text):
     '''
     Extract locations from a text using the web API.
@@ -145,15 +122,13 @@ def test_example_as_app():
     '''
     Test that running the example as an app works.
     '''
-    thread = ExampleAppThread()
-    thread.start()
+    process = subprocess.Popen(['python', EXAMPLE_SCRIPT])
     try:
-        time.sleep(2)
+        wait_for_server(EXAMPLE_URL)
         with io.open(EXAMPLE_INPUT, encoding='utf-8') as f:
             text = f.read()
         extracted = make_extract_api_request(EXAMPLE_URL, text)
         assert sorted(extracted) == sorted(EXAMPLE_DATA)
     finally:
-        thread.stop()
-        thread.join()
+        stop_process(process.pid, delay=10)
 

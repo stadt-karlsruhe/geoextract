@@ -27,13 +27,13 @@ from __future__ import (absolute_import, division, print_function,
 import contextlib
 import multiprocessing
 import os
-import signal
-import time
 
 from bs4 import BeautifulSoup
 import requests
 
 from geoextract import Pipeline, __version__ as geoextract_version
+
+from . import wait_for_server, stop_process
 
 
 SERVER_URL = 'http://localhost:5000'
@@ -55,10 +55,7 @@ class AppProcess(multiprocessing.Process):
     def stop(self):
         if self.pid is None:
             raise RuntimeError('Process is not running.')
-        print('Sending SIGINT')
-        os.kill(self.pid, signal.SIGINT)
-        print('Waiting for process {} to exit'.format(self.pid))
-        os.waitpid(self.pid, 0)
+        stop_process(self.pid, delay=10)
 
 
 @contextlib.contextmanager
@@ -66,7 +63,7 @@ def app(locations=(), *args, **kwargs):
     process = AppProcess(locations, *args, **kwargs)
     process.start()
     try:
-        time.sleep(1)
+        wait_for_server(SERVER_URL)
         yield
     finally:
         process.stop()
