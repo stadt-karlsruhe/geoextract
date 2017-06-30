@@ -102,27 +102,12 @@ First clone the repository:
     git clone https://github.com/stadt-karlsruhe/geoextract.git
     cd geoextract
 
-Make sure you have [NumPy][numpy] and [SciPy][scipy] installed. For example,
-on Ubuntu:
+Make sure that [tox] is installed (either globally or, better, in a
+[virtualenv]). Then run the tests:
 
-    sudo apt-get install python-numpy python-scipy
+    tox
 
-Create a virtualenv:
-
-    virtualenv -p python2 --system-site-packages venv
-    source venv/bin/activate
-
-Install GeoExtract in development mode:
-
-    python setup.py develop
-
-Install the development dependencies:
-
-    pip install -r dev-requirements.txt
-
-Run the tests:
-
-    pytest
+[tox]: https://tox.readthedocs.io
 
 
 ## History
