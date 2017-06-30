@@ -6,6 +6,9 @@ project uses [Semantic Versioning].
 
 ## [Unreleased]
 
+### Added
+
+- Support for Python 3.4 and later.
 
 ### Changed
 
