@@ -46,7 +46,7 @@ from six import iteritems, itervalues, PY2, unichr
 from .app import create_app
 
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 
 # Flags for regular expressions
 _RE_FLAGS = re.UNICODE

@@ -4,7 +4,7 @@ The format of this file is based on [Keep a Changelog], and this
 project uses [Semantic Versioning].
 
 
-## [Unreleased]
+## [0.3.0] (2017-07-07)
 
 ### Added
 
@@ -84,6 +84,7 @@ First release.
 [Semantic Versioning]: http://semver.org/
 
 [Unreleased]: https://github.com/stadt-karlsruhe/geoextract/compare/v0.2.0...master
+[0.3.0]: https://github.com/stadt-karlsruhe/geoextract/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/stadt-karlsruhe/geoextract/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/stadt-karlsruhe/geoextract/commits/v0.1.0
 
