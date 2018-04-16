@@ -188,6 +188,10 @@ class NameExtractor(Extractor):
 
     def extract(self, text):
         text = self._pad(text)
+
+        if not list(self._automaton.items()):
+            raise ValueError("You must provide locations for extraction")
+
         for end_index, name in self._automaton.iter(text):
             end_index -= 1  # Trailing padding space
             if PY2:
@@ -771,4 +775,3 @@ class WhitespaceSplitter(Splitter):
             if part.strip():
                 parts.append(part)
         return parts
-
