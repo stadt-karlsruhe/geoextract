@@ -45,6 +45,7 @@ DUMMY_LOCATIONS = [
     }
 ]
 
+
 def wait_for_server(url, max_tries=10, delay=1):
     '''
     Wait until a server responds to HTTP GET.

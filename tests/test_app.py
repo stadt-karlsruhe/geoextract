@@ -36,7 +36,7 @@ from bs4 import BeautifulSoup
 import requests
 
 from geoextract import __version__ as geoextract_version, Pipeline
-from . import stop_process, wait_for_server, DUMMY_LOCATIONS
+from . import DUMMY_LOCATIONS, stop_process, wait_for_server
 
 SERVER_URL = 'http://localhost:5000'
 EXTRACT_URL = SERVER_URL + '/api/v1/extract'

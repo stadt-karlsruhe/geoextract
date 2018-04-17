@@ -34,7 +34,7 @@ import re
 import mock
 
 import geoextract
-from . import sort_as_json, DUMMY_LOCATIONS
+from . import DUMMY_LOCATIONS, sort_as_json
 
 
 class TestNameExtractor(object):
@@ -876,4 +876,5 @@ class TestPipeline(object):
             geoextract.Pipeline([])
             assert False
         except ValueError as e:
-            assert str(e) == str(ValueError("You must provide locations for extraction"))
+            error_message = "You must provide locations for extraction"
+            assert str(e) == str(ValueError(error_message))
