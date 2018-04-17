@@ -26,7 +26,6 @@ from __future__ import (absolute_import, division, print_function,
 
 import contextlib
 import multiprocessing
-import os
 
 from bs4 import BeautifulSoup
 import requests
@@ -126,4 +125,3 @@ class TestApp(object):
             text = html2text(r.text)
             assert 'GeoExtract' in text
             assert geoextract_version in text
-

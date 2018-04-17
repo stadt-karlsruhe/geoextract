@@ -134,4 +134,3 @@ def test_example_as_app():
         assert sort_as_json(extracted) == sort_as_json(EXAMPLE_DATA)
     finally:
         stop_process(process.pid, delay=10)
-

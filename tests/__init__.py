@@ -100,4 +100,3 @@ def sort_as_json(values):
     Sort a list of values according to their JSON representation.
     '''
     return sorted(values, key=json.dumps)
-

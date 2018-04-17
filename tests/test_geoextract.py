@@ -28,8 +28,7 @@ import re
 
 import mock
 
-from geoextract import *
-
+import geoextract
 from . import sort_as_json
 
 
@@ -38,7 +37,7 @@ class TestNameExtractor(object):
     Test ``geoextract.NameExtractor``.
     '''
     def setup(self):
-        self.ex = NameExtractor()
+        self.ex = geoextract.NameExtractor()
         self.names = ['foo', 'foobar', 'a space', 'öüä']
         pipeline = mock.Mock(normalized_names=self.names)
         self.ex.setup(pipeline)
@@ -87,17 +86,21 @@ class TestWindowExtractor(object):
     '''
     def check_windows(self, text, start_len=2, stop_len=3):
         windows = []
-        class DummyExtractor(WindowExtractor):
+
+        class DummyExtractor(geoextract.WindowExtractor):
             def _window_extract(self, window):
                 windows.append(window)
                 return []
+
         list(DummyExtractor(start_len, stop_len).extract(text))
         return windows
 
     def check_results(self, text, start_len=2, stop_len=3):
-        class DummyExtractor(WindowExtractor):
+
+        class DummyExtractor(geoextract.WindowExtractor):
             def _window_extract(self, window):
                 yield {'name': window}
+
         return list(DummyExtractor(start_len, stop_len).extract(text))
 
     def test_leading_and_trailing_whitespace(self):
@@ -141,7 +144,7 @@ class TestPatternExtractor(object):
     Test ``geoextract.PatternExtractor``.
     '''
     def extract(self, text, patterns, start_len=1, stop_len=4):
-        extractor = PatternExtractor(patterns, start_len, stop_len)
+        extractor = geoextract.PatternExtractor(patterns, start_len, stop_len)
         return list(extractor.extract(text))
 
     def test_compiled_regex(self):
@@ -196,7 +199,7 @@ class TestNameValidator(object):
     FIELDS = ['street', 'city']
 
     def create_validator(self, *locations):
-        v = NameValidator()
+        v = geoextract.NameValidator()
         locations = {loc['name']: loc for loc in locations}
         pipeline = mock.Mock(locations=locations)
         v.setup(pipeline)
@@ -250,7 +253,7 @@ class TestBasicNormalizer(object):
     Test ``geoextract.BasicNormalizer``.
     '''
     def check(self, s, expected, **kwargs):
-        n = BasicNormalizer(**kwargs)
+        n = geoextract.BasicNormalizer(**kwargs)
         assert n.normalize(s) == expected
 
     def test_stemming(self):
@@ -340,7 +343,7 @@ class TestKeyFilterPostprocessor(object):
     Test ``geoextract.KeyFilterPostprocessor``.
     '''
     def test_postprocess(self):
-        kfp = KeyFilterPostprocessor(['a', 'b'])
+        kfp = geoextract.KeyFilterPostprocessor(['a', 'b'])
         for location, expected in [
             ({}, {}),
             ({'c': 1}, {}),
@@ -421,7 +424,7 @@ class TestWhitespaceSplitter(object):
         kwargs = {}
         if margin:
             kwargs['margin'] = margin
-        splitter = WhitespaceSplitter(**kwargs)
+        splitter = geoextract.WhitespaceSplitter(**kwargs)
         result = sorted(double_dedent(deline(chunk))
                         for chunk in splitter.split(s))
         expected = [double_dedent(deline(e)) for e in expected]
@@ -453,14 +456,14 @@ class TestWhitespaceSplitter(object):
             yyyyy
               y  
               y  
-            ''',
+            ''',  # noqa
             '''
             xxx
             x  
             x  
             x  
             xxx
-            '''
+            '''  # noqa
         ], margin=(1, 1))
 
     def test_overlapping(self):
@@ -484,7 +487,7 @@ class TestWhitespaceSplitter(object):
             x      x
             x      x
             xxxxxxxx
-            ''',
+            ''',  # noqa
             '''
             yyyyyyyy
             y      y
@@ -542,7 +545,12 @@ class TestWhitespaceSplitter(object):
             ),
             (
                 (3, 3),
-                ['aaa bb  c\n         \neee ff  g\n         \n         \niii jj  k']
+                ['aaa bb  c\n' +
+                 '         \n' +
+                 'eee ff  g\n' +
+                 '         \n' +
+                 '         \n' +
+                 'iii jj  k']
             ),
         ]:
             self.check(s, expected, margin)
@@ -561,7 +569,7 @@ class TestWhitespaceSplitter(object):
             self.check(s, [])
 
 
-class UpperNormalizer(Normalizer):
+class UpperNormalizer(geoextract.Normalizer):
     def normalize(self, s):
         return s.upper()
 
@@ -570,7 +578,7 @@ location1 = {'name': 'foo'}
 location2 = {'name': 'bar', 'aliases': ['bazinga']}
 
 
-class FakeExtractor(Extractor):
+class FakeExtractor(geoextract.Extractor):
     def __init__(self, results):
         self.results = results
 
@@ -604,9 +612,10 @@ class TestPipeline(object):
         splitter = mock.Mock()
         postprocessor1 = mock.Mock()
         postprocessor2 = mock.Mock()
-        Pipeline([], extractors=[extractor1, extractor2], validator=validator,
-                 normalizer=normalizer, splitter=splitter,
-                 postprocessors=[postprocessor1, postprocessor2])
+        geoextract.Pipeline([], extractors=[extractor1, extractor2],
+                            validator=validator, normalizer=normalizer,
+                            splitter=splitter, postprocessors=[postprocessor1,
+                            postprocessor2])
         assert normalizer.setup.called
         assert extractor1.setup.called
         assert extractor2.setup.called
@@ -619,7 +628,7 @@ class TestPipeline(object):
         '''
         Test that locations are correctly converted to a dict.
         '''
-        pipeline = Pipeline([location1, location2])
+        pipeline = geoextract.Pipeline([location1, location2])
         locations = pipeline.locations
         assert locations['foo'] is location1
         assert locations['bar'] is location2
@@ -629,8 +638,8 @@ class TestPipeline(object):
         '''
         Test that location names are correctly normalized.
         '''
-        pipeline = Pipeline([location1, location2],
-                             normalizer=UpperNormalizer())
+        pipeline = geoextract.Pipeline([location1, location2],
+                                       normalizer=UpperNormalizer())
         names = pipeline.normalized_names
         assert names['FOO'] is location1
         assert names['BAR'] is location2
@@ -644,7 +653,8 @@ class TestPipeline(object):
         extractor = mock.Mock()
         extractor.extract = mock.Mock()
         extractor.extract.return_value = []
-        pipeline = Pipeline([], extractors=[extractor], normalizer=UpperNormalizer())
+        pipeline = geoextract.Pipeline([], extractors=[extractor],
+                                       normalizer=UpperNormalizer())
         pipeline.extract('foo')
         extractor.extract.assert_called_once_with('FOO')
 
@@ -655,8 +665,9 @@ class TestPipeline(object):
         extractor = mock.Mock()
         extractor.extract = mock.Mock()
         extractor.extract.return_value = [(0, 1, {'name': 'A  B'})]
-        pipeline = Pipeline([{'name': 'A  B'}], extractors=[extractor],
-                            normalizer=False)
+        pipeline = geoextract.Pipeline([{'name': 'A  B'}],
+                                       extractors=[extractor],
+                                       normalizer=False)
         results = pipeline.extract('NO_NORMALIZATION--')
         extractor.extract.assert_called_once_with('NO_NORMALIZATION--')
         assert results == [{'name': 'A  B'}]
@@ -673,8 +684,8 @@ class TestPipeline(object):
         normalizer = UpperNormalizer()
         result = (0, 0, {'name': 'A-NAME', 'street': 'A-STREET',
                   'city': 'A-CITY'})
-        pipeline = Pipeline(locations, normalizer=normalizer,
-                            extractors=[FakeExtractor([result])])
+        pipeline = geoextract.Pipeline(locations, normalizer=normalizer,
+                                       extractors=[FakeExtractor([result])])
         extracted = pipeline.extract('does not matter')
         assert extracted[0]['name'] == 'a-name'
         assert extracted[0]['street'] == 'a-street'
@@ -686,7 +697,7 @@ class TestPipeline(object):
         '''
         extractor1 = FakeExtractor([(0, 1, {'name': 'foo'})])
         extractor2 = FakeExtractor([(1, 1, {'name': 'bar'})])
-        pipeline = Pipeline([], extractors=[extractor1, extractor2])
+        pipeline = geoextract.Pipeline([], extractors=[extractor1, extractor2])
         results = pipeline.extract('does not matter')
         assert sorted(r['name'] for r in results) == ['bar', 'foo']
 
@@ -710,7 +721,7 @@ class TestPipeline(object):
             (5, 2, {'name': 'f'}),
             (4, 2, {'name': 'g'}),
         ])
-        pipeline = Pipeline([], extractors=[extractor])
+        pipeline = geoextract.Pipeline([], extractors=[extractor])
         results = pipeline.extract('does not matter')
         assert sorted(r['name'] for r in results) == ['a', 'e', 'f', 'g']
 
@@ -726,14 +737,14 @@ class TestPipeline(object):
             loc3 = loc1.copy()
             loc3['foo'] = 'bar'  # Equal to loc1 because other keys are ignored
             loc4 = loc1.copy()
-            loc4[subkeys[0]] = 'x' # Not equal
+            loc4[subkeys[0]] = 'x'  # Not equal
             extractor = FakeExtractor([
                 (0, 1, loc1),
                 (1, 1, loc2),
                 (2, 1, loc3),
                 (3, 1, loc4),
             ])
-            pipeline = Pipeline([], extractors=[extractor])
+            pipeline = geoextract.Pipeline([], extractors=[extractor])
             results = pipeline.extract('does not matter')
             assert sort_as_json(results) == sort_as_json([loc1, loc4])
 
@@ -741,7 +752,7 @@ class TestPipeline(object):
         '''
         Test validation of results.
         '''
-        class MockValidator(Validator):
+        class MockValidator(geoextract.Validator):
             def validate(self, location):
                 return location['name'] == 'a'
 
@@ -749,8 +760,8 @@ class TestPipeline(object):
             (0, 1, {'name': 'a'}),
             (1, 1, {'name': 'b'}),
         ])
-        pipeline = Pipeline([], extractors=[extractor],
-                            validator=MockValidator())
+        pipeline = geoextract.Pipeline([], extractors=[extractor],
+                                       validator=MockValidator())
         results = pipeline.extract('does not matter')
         assert len(results) == 1
         assert results[0]['name'] == 'a'
@@ -760,14 +771,15 @@ class TestPipeline(object):
         Test disabled validation.
         '''
         extractor = FakeExtractor([(0, 1, {'name': 'a'})])
-        pipeline = Pipeline([], extractors=[extractor], validator=False)
+        pipeline = geoextract.Pipeline([], extractors=[extractor],
+                                       validator=False)
         assert pipeline.extract('does not matter') == [{'name': 'a'}]
 
     def test_postprocessing(self):
         '''
         Test postprocessing of results.
         '''
-        class MockPostprocessor(Postprocessor):
+        class MockPostprocessor(geoextract.Postprocessor):
             def postprocess(self, location):
                 if location['name'] == 'a':
                     location['foo'] = 'bar'
@@ -779,8 +791,8 @@ class TestPipeline(object):
             (0, 1, {'name': 'a'}),
             (1, 1, {'name': 'b'}),
         ])
-        pipeline = Pipeline([], extractors=[extractor],
-                            postprocessors=[MockPostprocessor()])
+        pipeline = geoextract.Pipeline([], extractors=[extractor],
+                                       postprocessors=[MockPostprocessor()])
         results = pipeline.extract('does not matter')
         assert len(results) == 1
         assert results[0] == {'name': 'a', 'foo': 'bar'}
@@ -789,15 +801,15 @@ class TestPipeline(object):
         '''
         Test splitting of documents.
         '''
-        class MockSplitter(Splitter):
+        class MockSplitter(geoextract.Splitter):
             def split(self, s):
                 return s
 
         extractor = mock.Mock()
         extractor.extract = mock.Mock()
         extractor.extract.return_value = []
-        pipeline = Pipeline([], extractors=[extractor],
-                            splitter=MockSplitter())
+        pipeline = geoextract.Pipeline([], extractors=[extractor],
+                                       splitter=MockSplitter())
         pipeline.extract('foo')
         extractor.extract.assert_has_calls(
             [mock.call('f'), mock.call('o'), mock.call('o')]
@@ -810,7 +822,8 @@ class TestPipeline(object):
         extractor = mock.Mock()
         extractor.extract = mock.Mock()
         extractor.extract.return_value = []
-        pipeline = Pipeline([], extractors=[extractor], splitter=False)
+        pipeline = geoextract.Pipeline([], extractors=[extractor],
+                                       splitter=False)
         pipeline.extract('white   space')
         extractor.extract.assert_called_once_with('white space')
 
@@ -818,7 +831,6 @@ class TestPipeline(object):
         '''
         Test creating a web app from a pipeline.
         '''
-        pipeline = Pipeline([])
+        pipeline = geoextract.Pipeline([])
         app = pipeline.create_app()
         assert hasattr(app, 'run')
-

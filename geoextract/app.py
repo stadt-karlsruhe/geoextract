@@ -63,4 +63,3 @@ def create_app(pipeline):
         return jsonify(pipeline.extract(text))
 
     return app
-

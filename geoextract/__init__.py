@@ -101,7 +101,7 @@ def _unique_locations(locations):
     unique_locations = []
     for location in locations:
         key = tuple((key, location.get(key, None))
-                     for key in _UNIQUE_LOCATION_KEYS)
+                    for key in _UNIQUE_LOCATION_KEYS)
         if key not in unique_keys:
             unique_keys.add(key)
             unique_locations.append(location)
@@ -376,7 +376,7 @@ class Pipeline(object):
         ``postprocessors`` is a list of instances of ``Postprocessor``
         and defaults to an empty list.
         '''
-        self.locations = {loc['name'] : loc for loc in locations}
+        self.locations = {loc['name']: loc for loc in locations}
         self.extractors = extractors or [NameExtractor()]
         self.validator = _default(validator, NameValidator)
         self.normalizer = _default(normalizer, BasicNormalizer)
@@ -759,7 +759,7 @@ class WhitespaceSplitter(Splitter):
             labels = binary_dilation(b, structure=structure).astype(b.dtype)
         else:
             labels = b
-        num = label(labels, structure=np.ones((3, 3)), output=labels)
+        label(labels, structure=np.ones((3, 3)), output=labels)
         objects = find_objects(labels)
         parts = []
         for i, obj in enumerate(objects):
@@ -771,4 +771,3 @@ class WhitespaceSplitter(Splitter):
             if part.strip():
                 parts.append(part)
         return parts
-

@@ -67,4 +67,3 @@ setup(
     packages=find_packages(),
     install_requires=requirements,
 )
-

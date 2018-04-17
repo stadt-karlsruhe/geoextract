@@ -191,4 +191,3 @@ if __name__ == '__main__':
             text = f.read()
         locations = pipeline.extract(text)
         print(json.dumps(locations, indent=4, sort_keys=True))
-
