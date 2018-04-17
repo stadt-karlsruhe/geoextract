@@ -37,11 +37,11 @@ import re
 
 import ahocorasick
 from nltk.stem.snowball import SnowballStemmer
-from unidecode import unidecode
 import numpy as np
 from scipy.ndimage.measurements import find_objects, label
 from scipy.ndimage.morphology import binary_dilation
 from six import iteritems, itervalues, PY2, unichr
+from unidecode import unidecode
 
 from .app import create_app
 

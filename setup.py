@@ -26,10 +26,11 @@ Installation script for the geoextract package.
 '''
 
 
-from setuptools import setup, find_packages
 import io
 import os.path
 import re
+
+from setuptools import find_packages, setup
 
 
 HERE = os.path.abspath(os.path.dirname(__file__))

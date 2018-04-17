@@ -35,9 +35,8 @@ import multiprocessing
 from bs4 import BeautifulSoup
 import requests
 
-from geoextract import Pipeline, __version__ as geoextract_version
-
-from . import wait_for_server, stop_process
+from geoextract import __version__ as geoextract_version, Pipeline
+from . import stop_process, wait_for_server
 
 
 SERVER_URL = 'http://localhost:5000'

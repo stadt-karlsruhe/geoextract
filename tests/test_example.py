@@ -37,7 +37,7 @@ import sys
 
 import requests
 
-from . import wait_for_server, stop_process, sort_as_json
+from . import sort_as_json, stop_process, wait_for_server
 
 
 EXAMPLE_DIR = os.path.join(os.path.dirname(__file__), '..', 'example')
