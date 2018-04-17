@@ -183,10 +183,6 @@ class NameExtractor(Extractor):
         # avoid finding parts of words. That of course assumes that other
         # word delimiters have been converted to spaces during
         # normalization.
-
-        if not pipeline.normalized_names:
-            raise ValueError("You must provide locations for extraction")
-
         self._automaton = ahocorasick.Automaton()
         for name in pipeline.normalized_names:
             name = name.strip()
@@ -195,8 +191,12 @@ class NameExtractor(Extractor):
 
     def extract(self, text):  # noqa: D102
         text = self._pad(text)
-
-        for end_index, name in self._automaton.iter(text):
+        try:
+            it = self._automaton.iter(text)
+        except AttributeError:
+            # Occurs when the list of locations was empty
+            return
+        for end_index, name in it:
             end_index -= 1  # Trailing padding space
             if PY2:
                 # UTF-8 encoded text might require more characters than the

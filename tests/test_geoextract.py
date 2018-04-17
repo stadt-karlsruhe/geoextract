@@ -34,7 +34,7 @@ import re
 import mock
 
 import geoextract
-from . import DUMMY_LOCATIONS, sort_as_json
+from . import sort_as_json
 
 
 class TestNameExtractor(object):
@@ -84,6 +84,14 @@ class TestNameExtractor(object):
         Test that only complete words are matched.
         '''
         self._check('xfoo xfooy foox', [])
+
+    def test_no_locations(self):
+        '''
+        Test that the extractor works with an empty list of locations.
+        '''
+        extractor = geoextract.NameExtractor()
+        pipeline = geoextract.Pipeline([], extractors=[extractor])
+        assert pipeline.extract('foobar') == []
 
 
 class TestWindowExtractor(object):
@@ -864,17 +872,6 @@ class TestPipeline(object):
         '''
         Test creating a web app from a pipeline.
         '''
-        pipeline = geoextract.Pipeline(DUMMY_LOCATIONS)
+        pipeline = geoextract.Pipeline([])
         app = pipeline.create_app()
         assert hasattr(app, 'run')
-
-    def test_empty_locations(self):
-        '''
-        Tests that an empty locations list throws an error.
-        '''
-        try:
-            geoextract.Pipeline([])
-            assert False
-        except ValueError as e:
-            error_message = "You must provide locations for extraction"
-            assert str(e) == str(ValueError(error_message))

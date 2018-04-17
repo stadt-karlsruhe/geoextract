@@ -4,6 +4,16 @@ The format of this file is based on [Keep a Changelog], and this
 project uses [Semantic Versioning].
 
 
+## [Unreleased]
+
+### Fixed
+
+- `NameExtractor` previously raised a hard to understand error message when the
+  location list passed to the `Pipeline` was empty. It now handles this edge
+  case correctly without raising an exception.
+  ([#5], with contributions by [@konstin])
+
+
 ## [0.3.0] (2017-07-07)
 
 ### Added
@@ -88,3 +98,6 @@ First release.
 [0.2.0]: https://github.com/stadt-karlsruhe/geoextract/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/stadt-karlsruhe/geoextract/commits/v0.1.0
 
+[#5]: https://github.com/stadt-karlsruhe/geoextract/pull/5
+
+[@konstin]: https://github.com/konstin

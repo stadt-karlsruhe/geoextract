@@ -36,7 +36,8 @@ from bs4 import BeautifulSoup
 import requests
 
 from geoextract import __version__ as geoextract_version, Pipeline
-from . import DUMMY_LOCATIONS, stop_process, wait_for_server
+from . import stop_process, wait_for_server
+
 
 SERVER_URL = 'http://localhost:5000'
 EXTRACT_URL = SERVER_URL + '/api/v1/extract'
@@ -73,7 +74,7 @@ class AppProcess(multiprocessing.Process):
 
 
 @contextlib.contextmanager
-def app(locations=DUMMY_LOCATIONS, *args, **kwargs):
+def app(locations=(), *args, **kwargs):
     '''
     Context manager that provides a geoextract app.
 
