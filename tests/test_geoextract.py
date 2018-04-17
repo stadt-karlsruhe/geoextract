@@ -30,7 +30,7 @@ import mock
 
 from geoextract import *
 
-from . import sort_as_json
+from . import sort_as_json, DUMMY_LOCATIONS
 
 
 class TestNameExtractor(object):
@@ -818,7 +818,17 @@ class TestPipeline(object):
         '''
         Test creating a web app from a pipeline.
         '''
-        pipeline = Pipeline([])
+        pipeline = Pipeline(DUMMY_LOCATIONS)
         app = pipeline.create_app()
         assert hasattr(app, 'run')
+
+    def test_empty_locations(self):
+        '''
+        Tests that an empty locations list throws an error.
+        '''
+        try:
+            pipeline = Pipeline([])
+            assert False
+        except ValueError as e:
+            assert str(e) == str(ValueError("You must provide locations for extraction"))
 

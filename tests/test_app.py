@@ -33,7 +33,7 @@ import requests
 
 from geoextract import Pipeline, __version__ as geoextract_version
 
-from . import wait_for_server, stop_process
+from . import wait_for_server, stop_process, DUMMY_LOCATIONS
 
 
 SERVER_URL = 'http://localhost:5000'
@@ -59,7 +59,7 @@ class AppProcess(multiprocessing.Process):
 
 
 @contextlib.contextmanager
-def app(locations=(), *args, **kwargs):
+def app(locations=DUMMY_LOCATIONS, *args, **kwargs):
     process = AppProcess(locations, *args, **kwargs)
     process.start()
     try:
