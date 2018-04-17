@@ -104,12 +104,17 @@ First clone the repository:
     git clone https://github.com/stadt-karlsruhe/geoextract.git
     cd geoextract
 
-Make sure that [tox] is installed (either globally or, better, in a
-[virtualenv]). Then run the tests:
+Install the development requirements (ideally inside a [virtualenv]):
+
+    pip install -r dev-requirements.txt
+
+To run the tests:
 
     tox
 
-[tox]: https://tox.readthedocs.io
+To run the linter:
+
+    flake8
 
 
 ## History
@@ -119,7 +124,7 @@ See `CHANGELOG.md`.
 
 ## License
 
-Copyright (c) 2016-2017, Stadt Karlsruhe (www.karlsruhe.de)
+Copyright (c) 2016-2018, Stadt Karlsruhe (www.karlsruhe.de)
 
 Distributed under the MIT license, see the file `LICENSE` for details.
 
