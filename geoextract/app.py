@@ -57,9 +57,9 @@ def create_app(pipeline):
         try:
             text = request.files['text'].read().decode('utf-8')
         except KeyError:
-            abort(400, 'Missing "text" parameter.')
+            return abort(400, 'Missing "text" parameter.')
         except UnicodeDecodeError:
-            abort(400, 'Decoding error. Data must be encoded as UTF-8.')
+            return abort(400, 'Decoding error. Data must be encoded as UTF-8.')
         return jsonify(pipeline.extract(text))
 
     return app
