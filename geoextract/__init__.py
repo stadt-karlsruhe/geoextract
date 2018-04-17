@@ -114,6 +114,7 @@ class Component(object):
 
     Components hook into different stages of the extraction process.
     '''
+
     def setup(self, pipeline):
         '''
         Set up component.
@@ -130,6 +131,7 @@ class Extractor(Component):
     '''
     Base class for extractors.
     '''
+
     def extract(self, text):
         '''
         Extract potential locations from a text.
@@ -160,6 +162,7 @@ class NameExtractor(Extractor):
     To avoid finding matches inside words only words surrounded by
     spaces (or at the beginning and end of the text) are matched.
     '''
+
     def __init__(self):
         '''
         Constructor.
@@ -172,7 +175,7 @@ class NameExtractor(Extractor):
             text = text.encode('utf-8')
         return text
 
-    def setup(self, pipeline):
+    def setup(self, pipeline):  # noqa: D102
         # Build an Aho-Corasick automaton for fast name search.
         # Unfortunately, the `ahocorasick` module currently doesn't
         # support Unicode on Python 2, so we have to do some manual
@@ -186,7 +189,7 @@ class NameExtractor(Extractor):
             self._automaton.add_word(self._pad(name), name)
         self._automaton.make_automaton()
 
-    def extract(self, text):
+    def extract(self, text):  # noqa: D102
         text = self._pad(text)
         for end_index, name in self._automaton.iter(text):
             end_index -= 1  # Trailing padding space
@@ -246,6 +249,7 @@ class WindowExtractor(Extractor):
     You can change the minimum and maximum group size via the
     constructor arguments ``start_len`` and ``stop_len``.
     '''
+
     def __init__(self, start_len, stop_len):
         '''
         Constructor.
@@ -264,7 +268,7 @@ class WindowExtractor(Extractor):
         self.start_len = start_len
         self.stop_len = stop_len
 
-    def extract(self, text):
+    def extract(self, text):  # noqa: D102
         words = _split(text)
         for length in range(self.start_len, self.stop_len + 1):
             for start, window in enumerate(_windowed(words, length)):
@@ -292,6 +296,7 @@ class PatternExtractor(WindowExtractor):
     This extractor uses sliding windows of varying sizes, see
     ``WindowExtractor``.
     '''
+
     def __init__(self, patterns, start_len=2, stop_len=7):
         '''
         Constructor.
@@ -326,6 +331,8 @@ class PatternExtractor(WindowExtractor):
 
 def _default(x, callback):
     '''
+    Default to callback return value.
+
     If ``x`` is ``None`` return ``callback()``, if ``x`` is false return
     ``None``, otherwise return ``x``.
     '''
@@ -349,6 +356,7 @@ class Pipeline(object):
     The ``normalized_names`` attribute is a dict which maps
     normalized names and aliases to their location dicts.
     '''
+
     def __init__(self, locations, extractors=None, validator=None,
                  normalizer=None, splitter=None, postprocessors=None):
         '''
@@ -509,6 +517,7 @@ class Validator(Component):
     '''
     Base class for validators.
     '''
+
     def validate(self, location):
         '''
         Validate a location.
@@ -533,10 +542,11 @@ class NameValidator(Validator):
     the location database and that that location must be of the correct
     type (as given by its ``type`` attribute).
     '''
-    def setup(self, pipeline):
+
+    def setup(self, pipeline):  # noqa: D102
         self.locations = pipeline.locations
 
-    def validate(self, location):
+    def validate(self, location):  # noqa: D102
         if 'name' in location:
             # Assume that this location was found by its name, so no
             # validation is necessary
@@ -560,6 +570,7 @@ class Normalizer(Component):
     '''
     Base class for string normalizers.
     '''
+
     def normalize(self, s):
         '''
         Normalize a string.
@@ -576,6 +587,7 @@ class BasicNormalizer(Normalizer):
     '''
     A versatile string normalizer.
     '''
+
     def __init__(self, to_ascii=True, rejoin_lines=True, remove_hyphens=True,
                  remove_specials=True, subs=None, stem=None):
         '''
@@ -639,6 +651,7 @@ class Postprocessor(Component):
     '''
     Base class for postprocessors.
     '''
+
     def postprocess(self, location):
         '''
         Postprocess a validated location.
@@ -657,6 +670,7 @@ class KeyFilterPostprocessor(Postprocessor):
     '''
     Simple postprocessor that filters a location's keys.
     '''
+
     def __init__(self, keys):
         '''
         Constructor.
@@ -666,7 +680,7 @@ class KeyFilterPostprocessor(Postprocessor):
         '''
         self.keys = set(keys)
 
-    def postprocess(self, location):
+    def postprocess(self, location):  # noqa: D102
         return {key: value for key, value in iteritems(location)
                 if key in self.keys}
 
@@ -678,6 +692,7 @@ class Splitter(Component):
     Splitters take a text and split it into multiple chunks, each of
     which is handled separately during location extraction.
     '''
+
     def split(self, text):
         '''
         Split a text into chunks.
@@ -736,6 +751,7 @@ class WhitespaceSplitter(Splitter):
     4 parts and``margin=(3, 3)`` yields a single part for the whole
     text.
     '''
+
     def __init__(self, margin=(2, 1)):
         '''
         Constructor.
@@ -745,7 +761,7 @@ class WhitespaceSplitter(Splitter):
         '''
         self.margin = margin
 
-    def split(self, text):
+    def split(self, text):  # noqa: D102
         a = _string_to_array(text)
         if not a.size:
             return []

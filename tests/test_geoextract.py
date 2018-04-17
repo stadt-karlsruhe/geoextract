@@ -21,6 +21,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+'''
+Tests for the geoextract module.
+'''
+
+
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
@@ -36,13 +41,14 @@ class TestNameExtractor(object):
     '''
     Test ``geoextract.NameExtractor``.
     '''
-    def setup(self):
+
+    def setup(self):  # noqa: D102
         self.ex = geoextract.NameExtractor()
         self.names = ['foo', 'foobar', 'a space', 'öüä']
         pipeline = mock.Mock(normalized_names=self.names)
         self.ex.setup(pipeline)
 
-    def check(self, s, expected):
+    def _check(self, s, expected):
         assert list(self.ex.extract(s)) == expected
 
     def test_match_at_string_start(self):
@@ -50,41 +56,42 @@ class TestNameExtractor(object):
         Test matches at the beginning of the string.
         '''
         for name in self.names:
-            self.check(name + ' x', [(0, len(name), {'name': name})])
+            self._check(name + ' x', [(0, len(name), {'name': name})])
 
     def test_match_at_string_end(self):
         '''
         Test matches at the end of the string.
         '''
         for name in self.names:
-            self.check('x ' + name, [(2, len(name), {'name': name})])
+            self._check('x ' + name, [(2, len(name), {'name': name})])
 
     def test_match_inside_string(self):
         '''
         Test matches in the middle of the string.
         '''
         for name in self.names:
-            self.check('x ' + name + ' y', [(2, len(name), {'name': name})])
+            self._check('x ' + name + ' y', [(2, len(name), {'name': name})])
 
     def test_match_complete_string(self):
         '''
         Test matching the complete string.
         '''
         for name in self.names:
-            self.check(name, [(0, len(name), {'name': name})])
+            self._check(name, [(0, len(name), {'name': name})])
 
     def test_word_only_matches(self):
         '''
         Test that only complete words are matched.
         '''
-        self.check('xfoo xfooy foox', [])
+        self._check('xfoo xfooy foox', [])
 
 
 class TestWindowExtractor(object):
     '''
     Test ``geoextract.WindowExtractor``.
     '''
-    def check_windows(self, text, start_len=2, stop_len=3):
+
+    def _check_windows(self, text, start_len=2, stop_len=3):
         windows = []
 
         class DummyExtractor(geoextract.WindowExtractor):
@@ -95,7 +102,7 @@ class TestWindowExtractor(object):
         list(DummyExtractor(start_len, stop_len).extract(text))
         return windows
 
-    def check_results(self, text, start_len=2, stop_len=3):
+    def _check_results(self, text, start_len=2, stop_len=3):
 
         class DummyExtractor(geoextract.WindowExtractor):
             def _window_extract(self, window):
@@ -107,30 +114,30 @@ class TestWindowExtractor(object):
         '''
         Test leading and trailing whitespace is ignored.
         '''
-        assert self.check_windows('  a b c') == ['a b', 'b c', 'a b c']
-        assert self.check_windows('a b c  ') == ['a b', 'b c', 'a b c']
-        assert self.check_windows('  a b c  ') == ['a b', 'b c', 'a b c']
+        assert self._check_windows('  a b c') == ['a b', 'b c', 'a b c']
+        assert self._check_windows('a b c  ') == ['a b', 'b c', 'a b c']
+        assert self._check_windows('  a b c  ') == ['a b', 'b c', 'a b c']
 
     def test_whitespace_collapse(self):
         '''
         Test that whitespace between words is collapsed.
         '''
-        assert self.check_windows('a  b\tc\nd') == ['a b', 'b c', 'c d',
-                                                    'a b c', 'b c d']
+        assert self._check_windows('a  b\tc\nd') == ['a b', 'b c', 'c d',
+                                                     'a b c', 'b c d']
 
     def test_single_width(self):
         '''
         Test windows of a single width.
         '''
-        assert self.check_windows('a b c', 1, 1) == ['a', 'b', 'c']
-        assert self.check_windows('a b c', 2, 2) == ['a b', 'b c']
-        assert self.check_windows('a b c', 3, 3) == ['a b c']
+        assert self._check_windows('a b c', 1, 1) == ['a', 'b', 'c']
+        assert self._check_windows('a b c', 2, 2) == ['a b', 'b c']
+        assert self._check_windows('a b c', 3, 3) == ['a b c']
 
     def test_match_meta_data(self):
         '''
         Test meta-data of matches.
         '''
-        assert self.check_results('a b c d') == [
+        assert self._check_results('a b c d') == [
             (0, 3, {'name': 'a b'}),
             (2, 3, {'name': 'b c'}),
             (4, 3, {'name': 'c d'}),
@@ -143,7 +150,8 @@ class TestPatternExtractor(object):
     '''
     Test ``geoextract.PatternExtractor``.
     '''
-    def extract(self, text, patterns, start_len=1, stop_len=4):
+
+    def extract(self, text, patterns, start_len=1, stop_len=4):  # noqa: D102
         extractor = geoextract.PatternExtractor(patterns, start_len, stop_len)
         return list(extractor.extract(text))
 
@@ -196,9 +204,10 @@ class TestNameValidator(object):
     '''
     Test ``geoextract.NameValidator``.
     '''
+
     FIELDS = ['street', 'city']
 
-    def create_validator(self, *locations):
+    def _create_validator(self, *locations):
         v = geoextract.NameValidator()
         locations = {loc['name']: loc for loc in locations}
         pipeline = mock.Mock(locations=locations)
@@ -209,7 +218,7 @@ class TestNameValidator(object):
         '''
         Test unknown locations.
         '''
-        v = self.create_validator()
+        v = self._create_validator()
         for field in self.FIELDS:
             assert not v.validate({field: 'unknown'})
 
@@ -217,7 +226,7 @@ class TestNameValidator(object):
         '''
         Test known locations with unknown type.
         '''
-        v = self.create_validator({'name': 'no-type'})
+        v = self._create_validator({'name': 'no-type'})
         for field in self.FIELDS:
             assert not v.validate({field: 'no-type'})
 
@@ -225,7 +234,7 @@ class TestNameValidator(object):
         '''
         Test known locations with a wrong type.
         '''
-        v = self.create_validator({'name': 'wrong-type', 'type': 'wrong'})
+        v = self._create_validator({'name': 'wrong-type', 'type': 'wrong'})
         for field in self.FIELDS:
             assert not v.validate({field: 'wrong-type'})
 
@@ -234,15 +243,15 @@ class TestNameValidator(object):
         Test known locations with a wrong type.
         '''
         for field in self.FIELDS:
-            v = self.create_validator({'name': 'correct-type', 'type': field})
+            v = self._create_validator({'name': 'correct-type', 'type': field})
             assert v.validate({field: 'correct-type'})
 
     def test_named_location(self):
         '''
         Test that locations with a name are always accepted.
         '''
-        v = self.create_validator({'name': 'no-type'},
-                                  {'name': 'wrong-type', 'type': 'wrong'})
+        v = self._create_validator({'name': 'no-type'},
+                                   {'name': 'wrong-type', 'type': 'wrong'})
         for field in self.FIELDS:
             assert v.validate({'name': 'a name', field: 'no-type'})
             assert v.validate({'name': 'a name', field: 'wrong-type'})
@@ -252,7 +261,8 @@ class TestBasicNormalizer(object):
     '''
     Test ``geoextract.BasicNormalizer``.
     '''
-    def check(self, s, expected, **kwargs):
+
+    def _check(self, s, expected, **kwargs):
         n = geoextract.BasicNormalizer(**kwargs)
         assert n.normalize(s) == expected
 
@@ -260,17 +270,17 @@ class TestBasicNormalizer(object):
         '''
         Test stemming in different languages.
         '''
-        self.check('streets', 'street', stem='english')
-        self.check('streets', 'streets', stem=False)
-        self.check('orte', 'ort', stem='german')
-        self.check('orte', 'orte', stem=False)
+        self._check('streets', 'street', stem='english')
+        self._check('streets', 'streets', stem=False)
+        self._check('orte', 'ort', stem='german')
+        self._check('orte', 'orte', stem=False)
 
     def test_to_ascii(self):
         '''
         Test conversion to ASCII.
         '''
-        self.check('öüäß', 'ouass', to_ascii=True)
-        self.check('öüäß', 'öüäß', to_ascii=False)
+        self._check('öüäß', 'ouass', to_ascii=True)
+        self._check('öüäß', 'öüäß', to_ascii=False)
 
     def test_rejoin_lines(self):
         '''
@@ -284,8 +294,8 @@ class TestBasicNormalizer(object):
             ('foo\nbar', 'foo bar', 'foo bar'),
             ('1-\n2', '1-2', '1 2'),
         ]:
-            self.check(s, joined, rejoin_lines=True)
-            self.check(s, not_joined, rejoin_lines=False)
+            self._check(s, joined, rejoin_lines=True)
+            self._check(s, not_joined, rejoin_lines=False)
 
     def test_remove_hyphens(self):
         '''
@@ -298,8 +308,8 @@ class TestBasicNormalizer(object):
             ('1-2-3', '1-2-3', '1-2-3'),
             ('2000-3000', '2000-3000', '2000-3000'),
         ]:
-            self.check(s, removed, remove_hyphens=True)
-            self.check(s, not_removed, remove_hyphens=False)
+            self._check(s, removed, remove_hyphens=True)
+            self._check(s, not_removed, remove_hyphens=False)
 
     def test_remove_specials(self):
         '''
@@ -317,8 +327,8 @@ class TestBasicNormalizer(object):
             ('1+2', '1+2'),
             ('+134', '+134'),
         ]:
-            self.check(s, removed, remove_specials=True)
-            self.check(s, s, remove_specials=False)
+            self._check(s, removed, remove_specials=True)
+            self._check(s, s, remove_specials=False)
 
     def test_substitutions(self):
         '''
@@ -328,21 +338,25 @@ class TestBasicNormalizer(object):
             ('foob', [(r'b\b', 'bar')], 'foobar'),
             ('ab', [(r'a', 'A'), (r'b', 'B')], 'AB'),
         ]:
-            self.check(s, expected, subs=subs)
-            self.check(s, s, subs=[])
+            self._check(s, expected, subs=subs)
+            self._check(s, s, subs=[])
 
     def test_whitespace_collapse(self):
         '''
         Test collapse of whitespace.
         '''
-        self.check(' \n \r \t a \n \r \t b \n \r \t ', 'a b')
+        self._check(' \n \r \t a \n \r \t b \n \r \t ', 'a b')
 
 
 class TestKeyFilterPostprocessor(object):
     '''
     Test ``geoextract.KeyFilterPostprocessor``.
     '''
+
     def test_postprocess(self):
+        '''
+        Test the postprocessing.
+        '''
         kfp = geoextract.KeyFilterPostprocessor(['a', 'b'])
         for location, expected in [
             ({}, {}),
@@ -359,6 +373,9 @@ class TestKeyFilterPostprocessor(object):
 
 
 def debug_string(s):
+    '''
+    Format a string for debugging output.
+    '''
     if not s:
         return '<empty>'
     parts = []
@@ -420,7 +437,8 @@ class TestWhitespaceSplitter(object):
     '''
     Test ``geoextract.WhitespaceSplitter``.
     '''
-    def check(self, s, expected, margin=None):
+
+    def _check(self, s, expected, margin=None):
         kwargs = {}
         if margin:
             kwargs['margin'] = margin
@@ -443,7 +461,7 @@ class TestWhitespaceSplitter(object):
         '''
         Test rectangular padding of chunks.
         '''
-        self.check('''
+        self._check('''
             xxx   y
             x     y
             x   yyyyy
@@ -470,7 +488,7 @@ class TestWhitespaceSplitter(object):
         '''
         Test overlapping chunks.
         '''
-        self.check('''
+        self._check('''
             x yyyyyyyy
             x y      y
             x y xxxx y
@@ -553,24 +571,28 @@ class TestWhitespaceSplitter(object):
                  'iii jj  k']
             ),
         ]:
-            self.check(s, expected, margin)
+            self._check(s, expected, margin)
 
     def test_empty(self):
         '''
         Test empty string as input argument.
         '''
-        self.check('', [])
+        self._check('', [])
 
     def test_only_whitespace(self):
         '''
         Test whitespace-only inputs.
         '''
         for s in [' ', '\t', '\n', ' \t \n \n\t\n   \n']:
-            self.check(s, [])
+            self._check(s, [])
 
 
 class UpperNormalizer(geoextract.Normalizer):
-    def normalize(self, s):
+    '''
+    Normalizer that converts text to upper-case.
+    '''
+
+    def normalize(self, s):  # noqa: D102
         return s.upper()
 
 
@@ -579,10 +601,20 @@ location2 = {'name': 'bar', 'aliases': ['bazinga']}
 
 
 class FakeExtractor(geoextract.Extractor):
+    '''
+    Fake extractor that returns hard-coded results.
+    '''
+
     def __init__(self, results):
+        '''
+        Constructor.
+
+        ``results`` is the hard-coded result that should be returned by
+        ``extract``.
+        '''
         self.results = results
 
-    def extract(self, s):
+    def extract(self, s):  # noqa: D102
         for result in self.results:
             yield result
 
@@ -601,6 +633,7 @@ class TestPipeline(object):
     '''
     Test ``geoextract.Pipeline``.
     '''
+
     def test_component_setup(self):
         '''
         Test that components are setup correctly.

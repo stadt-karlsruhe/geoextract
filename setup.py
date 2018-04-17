@@ -21,6 +21,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+'''
+Installation script for the geoextract package.
+'''
+
+
 from setuptools import setup, find_packages
 import io
 import os.path
