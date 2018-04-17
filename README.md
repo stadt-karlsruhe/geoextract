@@ -18,7 +18,7 @@ references to locations but which do not describe an actually existing place.
 Therefore, some way of validating potential locations is required. How that
 is achieved depends heavily on the use case and the available data. For example
 you might have a database with all valid addresses (e.g. from
-[OpenAddresses][openaddresses]), in which case you can perform a very detailed
+[OpenAddresses][openaddresses] or [OpenStreetMap][openstreetmap]), in which case you can perform a very detailed
 validation. In other cases, you might only have a list of valid street names
 and will have to validate house numbers heuristically.
 
@@ -28,6 +28,7 @@ framework on which you can build a solution for your use case.
 
 [falsehoods]: https://www.mjt.me.uk/posts/falsehoods-programmers-believe-about-addresses/
 [openaddresses]: https://openaddresses.io/
+[openstreetmap]: https://www.openstreetmap.org/
 
 
 ## Installation

@@ -1,0 +1,49 @@
+[
+  {
+    "name": "Rathaus am Marktplatz",
+    "aliases": [
+      "Rathaus"
+    ],
+    "street": "Karl-Friedrich-Straße",
+    "house_number": "10",
+    "postcode": "76133",
+    "city": "Karlsruhe",
+    "type": "poi"
+  },
+  {
+    "name": "Konzerthaus",
+    "street": "Festplatz",
+    "house_number": "9",
+    "postcode": "76133",
+    "city": "Karlsruhe",
+    "type": "poi"
+  },
+  {
+    "name": "Marienstraße",
+    "type": "street"
+  },
+  {
+    "name": "Karl-Friedrich-Straße",
+    "type": "street"
+  },
+  {
+    "name": "Rüppurrer Straße",
+    "type": "street"
+  },
+  {
+    "name": "Karlstraße",
+    "type": "street"
+  },
+  {
+    "name": "Kaiserstraße",
+    "type": "street"
+  },
+  {
+    "name": "Festplatz",
+    "type": "street"
+  },
+  {
+    "name": "Karlsruhe",
+    "type": "city"
+  }
+]

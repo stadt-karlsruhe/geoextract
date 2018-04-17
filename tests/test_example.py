@@ -46,63 +46,8 @@ EXAMPLE_INPUT = os.path.join(EXAMPLE_DIR, 'sample_input.txt')
 EXAMPLE_PORT = 5000
 EXAMPLE_URL = 'http://localhost:{}'.format(EXAMPLE_PORT)
 
-EXAMPLE_DATA = [
-    {
-        'name': 'Rüppurrer Straße'
-    },
-    {
-        'house_number': '1000',
-        'street': 'Festplatz'
-    },
-    {
-        'house_number': '11c',
-        'street': 'Festplatz'
-    },
-    {
-        'house_number': '3',
-        'street': 'Kaiserstraße'
-    },
-    {
-        'house_number': '3-19',
-        'street': 'Festplatz'
-    },
-    {
-        'house_number': '943',
-        'street': 'Karl-Friedrich-Straße'
-    },
-    {
-        'city': 'Karlsruhe',
-        'house_number': '12',
-        'postcode': '76137',
-        'street': 'Rüppurrer Straße'
-    },
-    {
-        'city': 'Karlsruhe',
-        'house_number': '7',
-        'postcode': '76133',
-        'street': 'Karlstraße'
-    },
-    {
-        'city': 'Karlsruhe',
-        'house_number': '8',
-        'postcode': '76133',
-        'street': 'Kaiserstraße'
-    },
-    {
-        'city': 'Karlsruhe',
-        'house_number': '10',
-        'name': 'Rathaus am Marktplatz',
-        'postcode': '76133',
-        'street': 'Karl-Friedrich-Straße'
-    },
-    {
-        'city': 'Karlsruhe',
-        'house_number': '9',
-        'name': 'Konzerthaus',
-        'postcode': '76133',
-        'street': 'Festplatz'
-    }
-]
+with open('tests/example_data.json') as fp:
+    EXAMPLE_DATA = json.load(fp)
 
 
 def test_example_with_file():

@@ -3,6 +3,7 @@
 /build/
 /.cache/
 /.tox/
+/.pytest_cache/
 
 /README.html
 /.coverage

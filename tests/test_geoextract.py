@@ -342,12 +342,12 @@ class TestBasicNormalizer(object):
         '''
         Test substitutions.
         '''
-        for s, subs, expected in [
+        for s, substitutions, expected in [
             ('foob', [(r'b\b', 'bar')], 'foobar'),
             ('ab', [(r'a', 'A'), (r'b', 'B')], 'AB'),
         ]:
-            self._check(s, expected, subs=subs)
-            self._check(s, s, subs=[])
+            self._check(s, expected, substitutions=substitutions)
+            self._check(s, s, substitutions=[])
 
     def test_whitespace_collapse(self):
         '''

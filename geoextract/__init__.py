@@ -45,7 +45,6 @@ from unidecode import unidecode
 
 from .app import create_app
 
-
 __version__ = '0.3.0'
 
 # Flags for regular expressions
@@ -169,7 +168,8 @@ class NameExtractor(Extractor):
         '''
         self._automaton = None  # Initialized by ``setup``
 
-    def _pad(self, text):
+    @staticmethod
+    def _pad(text):
         text = ' ' + text + ' '
         if PY2:
             text = text.encode('utf-8')
@@ -205,7 +205,9 @@ class NameExtractor(Extractor):
                 end_index = len(text[1:end_index + 1].decode('utf-8'))
             end_index -= 1  # Leading padding space
             length = len(name)  # ``name`` is always Unicode
-            yield (end_index - length + 1, length, {'name': name})
+            yield (end_index - length + 1, length, {
+                'name': name
+            })
 
 
 class WindowExtractor(Extractor):
@@ -403,6 +405,7 @@ class Pipeline(object):
             setup = getattr(c, 'setup', None)
             if setup:
                 setup(self)
+
         for component in itertools.chain(self.extractors, self.postprocessors):
             setup_component(component)
         for component in [self.normalizer, self.splitter, self.validator]:
@@ -434,10 +437,9 @@ class Pipeline(object):
         '''
         # Denormalize names
         for key in 'name', 'street', 'city':
-            try:
-                result[key] = self.normalized_names[result[key]]['name']
-            except KeyError:
-                pass
+            if key not in result or result[key] not in self.normalized_names:
+                continue
+            result[key] = self.normalized_names[result[key]]['name']
         # Augment
         try:
             result.update(self.locations[result['name']])
@@ -557,16 +559,15 @@ class NameValidator(Validator):
             # validation is necessary
             return True
         for key in 'street', 'city':
-            try:
-                value = location[key]
-            except KeyError:
+            if key not in location:
                 continue
-            try:
-                if not self.locations[value].get('type') == key:
-                    # Known name, but wrong or missing type
-                    return False
-            except KeyError:
-                # Unknown name
+            value = location[key]
+
+            if value not in self.locations:
+                return False
+
+            if not self.locations[value].get('type') == key:
+                # Known name, but wrong or missing type
                 return False
         return True
 
@@ -594,7 +595,7 @@ class BasicNormalizer(Normalizer):
     '''
 
     def __init__(self, to_ascii=True, rejoin_lines=True, remove_hyphens=True,
-                 remove_specials=True, subs=None, stem=None):
+                 remove_specials=True, substitutions=None, stem=None):
         '''
         Constructor.
 
@@ -625,7 +626,7 @@ class BasicNormalizer(Normalizer):
         self.rejoin_lines = rejoin_lines
         self.remove_hyphens = remove_hyphens
         self.remove_specials = remove_specials
-        self.subs = subs or []
+        self.subs = substitutions or []
 
     def normalize(self, s):
         '''
@@ -646,8 +647,8 @@ class BasicNormalizer(Normalizer):
         for pattern, replacement in self.subs:
             s = re.sub(pattern, replacement, s, flags=_RE_FLAGS)
         if self._stemmer:
-            callback = lambda m: self._stemmer.stem(m.group())
-            s = re.sub(r'([^\W\d_]|-)+', callback, s, flags=_RE_FLAGS)
+            stemmer = lambda m: self._stemmer.stem(m.group())
+            s = re.sub(r'([^\W\d_]|-)+', stemmer, s, flags=_RE_FLAGS)
         s = re.sub(r'\s+', ' ', s, flags=_RE_FLAGS)
         return s.strip()
 
