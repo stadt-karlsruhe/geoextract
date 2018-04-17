@@ -21,6 +21,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+'''
+Tests for the example provided with the geoextract package.
+'''
+
+
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
@@ -32,7 +37,7 @@ import sys
 
 import requests
 
-from . import wait_for_server, stop_process, sort_as_json
+from . import sort_as_json, stop_process, wait_for_server
 
 
 EXAMPLE_DIR = os.path.join(os.path.dirname(__file__), '..', 'example')
@@ -134,4 +139,3 @@ def test_example_as_app():
         assert sort_as_json(extracted) == sort_as_json(EXAMPLE_DATA)
     finally:
         stop_process(process.pid, delay=10)
-

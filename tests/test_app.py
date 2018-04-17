@@ -21,20 +21,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+'''
+Tests for the geoextract web app.
+'''
+
+
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import contextlib
 import multiprocessing
-import os
 
 from bs4 import BeautifulSoup
 import requests
 
-from geoextract import Pipeline, __version__ as geoextract_version
-
-from . import wait_for_server, stop_process, DUMMY_LOCATIONS
-
+from geoextract import __version__ as geoextract_version, Pipeline
+from . import stop_process, wait_for_server, DUMMY_LOCATIONS
 
 SERVER_URL = 'http://localhost:5000'
 EXTRACT_URL = SERVER_URL + '/api/v1/extract'
@@ -44,15 +46,27 @@ class AppProcess(multiprocessing.Process):
     '''
     Process for running and stopping an app server.
     '''
+
     def __init__(self, *args, **kwargs):
+        '''
+        Set up a new geoextract app.
+
+        All arguments are passed to ``geoextract.Pipeline``.
+        '''
         super(AppProcess, self).__init__()
         self.pipeline = Pipeline(*args, **kwargs)
         self.app = self.pipeline.create_app()
 
     def run(self):
+        '''
+        Start the app in a separate process.
+        '''
         self.app.run()
 
     def stop(self):
+        '''
+        Stop the app.
+        '''
         if self.pid is None:
             raise RuntimeError('Process is not running.')
         stop_process(self.pid, delay=10)
@@ -60,6 +74,11 @@ class AppProcess(multiprocessing.Process):
 
 @contextlib.contextmanager
 def app(locations=DUMMY_LOCATIONS, *args, **kwargs):
+    '''
+    Context manager that provides a geoextract app.
+
+    All arguments are passed on to ``geoextract.Pipeline``.
+    '''
     process = AppProcess(locations, *args, **kwargs)
     process.start()
     try:
@@ -70,6 +89,9 @@ def app(locations=DUMMY_LOCATIONS, *args, **kwargs):
 
 
 def html2text(html):
+    '''
+    Extract the text of a piece of HTML code.
+    '''
     return BeautifulSoup(html, 'html.parser').get_text()
 
 
@@ -77,6 +99,7 @@ class TestApp(object):
     '''
     Tests for the web app.
     '''
+
     def test_extract_get(self):
         '''
         Test that GET requests to ``extract`` fail.
@@ -126,4 +149,3 @@ class TestApp(object):
             text = html2text(r.text)
             assert 'GeoExtract' in text
             assert geoextract_version in text
-

@@ -21,14 +21,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+'''
+Tests for the geoextract package.
+'''
+
+
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import errno
 import json
 import os
-import threading
 import signal
+import threading
 import time
 
 import requests
@@ -106,4 +111,3 @@ def sort_as_json(values):
     Sort a list of values according to their JSON representation.
     '''
     return sorted(values, key=json.dumps)
-
