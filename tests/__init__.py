@@ -38,6 +38,13 @@ import time
 
 import requests
 
+DUMMY_LOCATIONS = [
+    {
+        'name': 'FooBar',
+        'type': 'street'
+    }
+]
+
 
 def wait_for_server(url, max_tries=10, delay=1):
     '''
